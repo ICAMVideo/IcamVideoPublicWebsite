@@ -1,6 +1,6 @@
 "use client";
 
-import { drawImageCover } from "@/lib/canvasImageCover";
+import { drawImageCover, drawImageCoverFocal } from "@/lib/canvasImageCover";
 import { BRAND_BLUE } from "@/lib/brand";
 import { FrameBitmapCache } from "@/lib/frameBitmapCache";
 import { isWebKit, preferNativeScroll } from "@/lib/preferNativeScroll";
@@ -31,7 +31,7 @@ function scrubSmoothingSeconds(): number {
  */
 function heroSectionHeightVh(frameCount: number): number {
   if (frameCount <= 0) return 100;
-  return Math.max(480, Math.round(120 + frameCount * 2.35));
+  return Math.max(600, Math.round(120 + frameCount * 5.5));
 }
 
 type Props = {
@@ -368,10 +368,14 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     let letterEls1: HTMLElement[] | null = null;
     let letterEls2: HTMLElement[] | null = null;
-    let lastPreloadCenter = -1;
+    let lastProgressTs = 0;
+    let lastProgress = 0;
+    let scrollVelocity = 0;
+    let scrollDirection = 1;
+    let scrollFastForPin = false;
     let prevMode: HeroOverlayMode | undefined;
 
-    const cache = new FrameBitmapCache(52);
+    const cache = new FrameBitmapCache(72);
     let cancelled = false;
 
     const sizeRef = { w: 0, h: 0 };
@@ -407,8 +411,14 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     const pinAround = (i0: number, i1: number, n: number) => {
       const s = new Set<number>();
-      for (const i of [i0, i1, i0 - 1, i0 + 1, i1 - 1, i1 + 1, i0 - 2, i0 + 2]) {
-        if (i >= 0 && i < n) s.add(i);
+      const ring = scrollFastForPin
+        ? [0, 1, -1, 2, -2, 3, -3]
+        : [0, 1, -1, 2, -2];
+      for (const base of [i0, i1]) {
+        for (const d of ring) {
+          const i = base + d;
+          if (i >= 0 && i < n) s.add(i);
+        }
       }
       if (lastPainted) {
         if (lastPainted.i0 >= 0 && lastPainted.i0 < n) s.add(lastPainted.i0);
@@ -471,6 +481,17 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
       if (!b0) return;
 
+      const narrow = w < 640;
+      const drawFrame = (
+        ctx: CanvasRenderingContext2D,
+        bitmap: NonNullable<typeof b0>,
+        cw: number,
+        ch: number
+      ) => {
+        if (narrow) drawImageCoverFocal(ctx, bitmap, cw, ch, 0.5, 0.35);
+        else drawImageCover(ctx, bitmap, cw, ch);
+      };
+
       /** Snapshot what we actually drew (for hold-frame + cache pinning). */
       const recordIfTarget = () => {
         if (!fromTarget) return;
@@ -495,32 +516,32 @@ export function ScrollFrameHero({ frames, active }: Props) {
       };
 
       if (rm) {
-        drawImageCover(c2d, b0, w, h);
+        drawFrame(c2d, b0, w, h);
         recordIfTarget();
         return;
       }
 
       if (i0 === i1 || blend < 0.002) {
-        drawImageCover(c2d, b0, w, h);
+        drawFrame(c2d, b0, w, h);
         recordIfTarget();
         return;
       }
 
       if (!b1) {
-        drawImageCover(c2d, b0, w, h);
+        drawFrame(c2d, b0, w, h);
         recordIfTarget();
         return;
       }
 
       if (blend > 0.998) {
-        drawImageCover(c2d, b1, w, h);
+        drawFrame(c2d, b1, w, h);
         recordIfTarget();
         return;
       }
 
-      drawImageCover(c2d, b0, w, h);
+      drawFrame(c2d, b0, w, h);
       c2d.globalAlpha = blend;
-      drawImageCover(c2d, b1, w, h);
+      drawFrame(c2d, b1, w, h);
       c2d.globalAlpha = 1;
       recordIfTarget();
     };
@@ -545,18 +566,24 @@ export function ScrollFrameHero({ frames, active }: Props) {
     ro.observe(wrap);
     resizeCanvas();
 
-    const prefetchWindow = (center: number) => {
+    const prefetchWindow = (center: number, dir: number, vel: number) => {
       const n = frames.length;
       const native = preferNativeScroll();
-      const radius = native ? 12 : 24;
+      const baseRadius = native ? 22 : 42;
+      const fast = vel > 0.06;
+      const ahead = fast ? Math.round(baseRadius * 1.75) : baseRadius;
+      const behind = fast ? Math.round(baseRadius * 0.45) : baseRadius;
+
       const list: number[] = [];
-      for (let d = -radius; d <= radius; d++) {
-        const idx = center + d;
-        if (idx >= 0 && idx < n) list.push(idx);
-      }
+      const lo = Math.max(0, center - (dir >= 0 ? behind : ahead));
+      const hi = Math.min(n - 1, center + (dir >= 0 ? ahead : behind));
+      for (let idx = lo; idx <= hi; idx++) list.push(idx);
+
       list.sort(
         (a, b) => Math.abs(a - center) - Math.abs(b - center)
       );
+
+      cache.cancelDistant(center, 110);
 
       if (!native) {
         for (const idx of list) {
@@ -568,16 +595,12 @@ export function ScrollFrameHero({ frames, active }: Props) {
       let ptr = 0;
       const pump = () => {
         if (cancelled) return;
-        const batch = 2;
+        const batch = 10;
         for (let k = 0; k < batch && ptr < list.length; k++, ptr++) {
           cache.prefetch(list[ptr], frameSrc(frames[list[ptr]]), tryPaint);
         }
         if (ptr >= list.length) return;
-        if (typeof requestIdleCallback !== "undefined") {
-          requestIdleCallback(pump, { timeout: 140 });
-        } else {
-          requestAnimationFrame(pump);
-        }
+        requestAnimationFrame(pump);
       };
       pump();
     };
@@ -619,7 +642,19 @@ export function ScrollFrameHero({ frames, active }: Props) {
         scrub: scrubSeconds,
         onUpdate: (self) => {
           const p = self.progress;
+          const now = performance.now();
           const n = frames.length;
+
+          if (lastProgressTs > 0) {
+            const dt = Math.max(1, now - lastProgressTs);
+            const dp = p - lastProgress;
+            scrollVelocity = Math.abs(dp) / dt * 1000;
+            scrollDirection = dp >= 0 ? 1 : -1;
+          }
+          lastProgressTs = now;
+          lastProgress = p;
+          scrollFastForPin = scrollVelocity > 0.06;
+
           const { modeIdx, i0, i1, blend } = computeScrollBlend(
             p,
             n,
@@ -627,7 +662,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
           );
           paintStateRef.i0 = i0;
           paintStateRef.i1 = i1;
-          paintStateRef.blend = blend;
+          paintStateRef.blend = scrollVelocity > 0.12 ? 0 : blend;
           paintStateRef.rm = reduceMotion;
 
           pinAround(i0, i1, n);
@@ -644,7 +679,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
             .getOrLoad(i0, frameSrc(frames[i0]))
             .then(repaintWhenReady)
             .catch(() => {});
-          if (i1 !== i0) {
+          if (i1 !== i0 && scrollVelocity <= 0.12) {
             void cache
               .getOrLoad(i1, frameSrc(frames[i1]))
               .then(repaintWhenReady)
@@ -653,10 +688,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
           tryPaint();
 
           const preloadCenter = Math.round((i0 + i1) / 2);
-          if (preloadCenter !== lastPreloadCenter) {
-            lastPreloadCenter = preloadCenter;
-            prefetchWindow(preloadCenter);
-          }
+          prefetchWindow(preloadCenter, scrollDirection, scrollVelocity);
 
           const mode = getOverlayMode(modeIdx, eraseEndIdx, phase2StartIdx);
 
@@ -737,8 +769,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
     paintStateRef.i1 = init.i1;
     paintStateRef.blend = init.blend;
     paintStateRef.rm = reduceMotion;
-    lastPreloadCenter = -1;
-    prefetchWindow(0);
+    prefetchWindow(0, 1, 0);
     void cache
       .getOrLoad(0, frameSrc(frames[0]))
       .then(() => {
@@ -800,7 +831,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
   };
 
   const lineClass =
-    "max-w-[28rem] text-balance text-center text-white font-semibold tracking-tight drop-shadow-[0_2px_28px_rgba(0,0,0,0.55)] sm:max-w-5xl lg:max-w-6xl";
+    "w-full max-w-full text-balance text-center text-white font-semibold tracking-tight drop-shadow-[0_2px_28px_rgba(0,0,0,0.55)] sm:max-w-5xl lg:max-w-6xl";
 
   return (
     <section
@@ -875,7 +906,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
               className={lineClass}
               aria-label={`${LINE1} ${LINE2}`}
             >
-              <span className="block text-[clamp(2.65rem,10.5vw,6.25rem)] leading-[1.05]">
+              <span className="block text-[clamp(1.75rem,8vw,6.25rem)] leading-[1.05]">
                 {LINE1.split("").map((ch, i) => (
                   <span
                     key={`h1-${i}`}
@@ -887,7 +918,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
                   </span>
                 ))}
               </span>
-              <span className="mt-5 block text-[clamp(2rem,6.75vw,4.25rem)] leading-[1.08]">
+              <span className="mt-3 block text-[clamp(1.15rem,5vw,4.25rem)] leading-[1.08] sm:mt-5">
                 {LINE2.split("").map((ch, i) => (
                   <span
                     key={`h2-${i}`}
@@ -910,7 +941,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
               className={lineClass}
               aria-label={`${PHASE2_LINE1} ${PHASE2_LINE2}`}
             >
-              <span className="block text-[clamp(2.2rem,8.5vw,5rem)] leading-[1.06]">
+              <span className="block text-[clamp(1.45rem,6.5vw,5rem)] leading-[1.06]">
                 {PHASE2_LINE1.split("").map((ch, i) => (
                   <span
                     key={`p2-h1-${i}`}
@@ -922,7 +953,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
                   </span>
                 ))}
               </span>
-              <span className="mt-5 block text-[clamp(1.75rem,5.5vw,3.25rem)] leading-[1.1]">
+              <span className="mt-3 block text-[clamp(1.05rem,4.2vw,3.25rem)] leading-[1.1] sm:mt-5">
                 {PHASE2_LINE2.split("").map((ch, i) => (
                   <span
                     key={`p2-h2-${i}`}

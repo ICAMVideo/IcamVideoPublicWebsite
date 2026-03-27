@@ -2,6 +2,9 @@
  * LRU cache of decoded frames for canvas scrubbing.
  * fetch + createImageBitmap. WebKit serializes heavy decodes — many parallel
  * createImageBitmap calls freeze Safari; we cap concurrent decodes.
+ *
+ * Supports AbortController per fetch so stale prefetches (frames already
+ * scrolled past) can be cancelled, freeing bandwidth for the current target.
  */
 function defaultDecodeConcurrency(): number {
   if (typeof navigator === "undefined") return 4;
@@ -26,6 +29,7 @@ export class FrameBitmapCache {
   /** LRU order: oldest at front, newest at end */
   private readonly lru: number[] = [];
   private readonly inflight = new Map<number, Promise<ImageBitmap | undefined>>();
+  private readonly abortControllers = new Map<number, AbortController>();
   /** Indices that must not be evicted (current scrub targets + neighbors). */
   private pinned = new Set<number>();
 
@@ -129,17 +133,22 @@ export class FrameBitmapCache {
 
     let p = this.inflight.get(i);
     if (!p) {
-      p = fetch(url, { cache: "force-cache" })
+      const ac = new AbortController();
+      this.abortControllers.set(i, ac);
+
+      p = fetch(url, { cache: "force-cache", signal: ac.signal })
         .then((r) => {
           if (!r.ok) throw new Error(`Frame fetch ${r.status}`);
           return r.blob();
         })
-        .then((blob) => {
+        .then(async (blob) => {
           if (this.dead) throw new Error("FrameBitmapCache destroyed");
+          await new Promise<void>((r) => requestAnimationFrame(() => r()));
           return this.withDecodeSlot(() => createImageBitmap(blob));
         })
         .then((bmp) => {
           this.inflight.delete(i);
+          this.abortControllers.delete(i);
           if (this.dead) {
             bmp.close();
             throw new Error("FrameBitmapCache destroyed");
@@ -154,7 +163,11 @@ export class FrameBitmapCache {
         })
         .catch((err) => {
           this.inflight.delete(i);
+          this.abortControllers.delete(i);
           if (this.dead) return undefined;
+          if (err instanceof DOMException && err.name === "AbortError") {
+            return undefined;
+          }
           if (
             err instanceof Error &&
             err.message === "FrameBitmapCache destroyed"
@@ -178,8 +191,25 @@ export class FrameBitmapCache {
       .catch(() => {});
   }
 
+  /**
+   * Abort prefetches that are far from `center` (in index space).
+   * A tight window caused thrashing during fast scroll: we'd abort work we still
+   * needed, then pay fetch+decode again — felt like a 0.5–1s freeze.
+   */
+  cancelDistant(center: number, minDistance: number): void {
+    for (const [idx, ac] of this.abortControllers) {
+      if (Math.abs(idx - center) > minDistance) {
+        ac.abort();
+        this.abortControllers.delete(idx);
+        this.inflight.delete(idx);
+      }
+    }
+  }
+
   destroy() {
     this.dead = true;
+    for (const ac of this.abortControllers.values()) ac.abort();
+    this.abortControllers.clear();
     for (const w of this.decodeWait) {
       w.reject(new Error("FrameBitmapCache destroyed"));
     }
