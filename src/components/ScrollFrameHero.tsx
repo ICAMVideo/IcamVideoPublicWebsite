@@ -14,6 +14,15 @@ const CURSOR_OFFSET = 14;
 gsap.registerPlugin(ScrollTrigger);
 
 /**
+ * ScrollTrigger `scrub` seconds: higher = progress eases toward scroll (fewer frame jumps per wheel tick).
+ * WebKit uses native scroll (no Lenis); a **short** scrub (we previously used 0.45s) makes progress snap
+ * faster than `createImageBitmap` can keep up → black / stale frame. Chrome+Lenis used 0.72s.
+ */
+function scrubSmoothingSeconds(): number {
+  return preferNativeScroll() ? 1.05 : 0.72;
+}
+
+/**
  * Sticky hero is 100vh; scroll distance through the section ≈ (return − 100)vh.
  * Scales with `frames.length` from `readTerminalManifest()` (e.g. ~335 WebPs).
  * Raise the multiplier if the scrub still feels fast.
@@ -338,9 +347,10 @@ export function ScrollFrameHero({ frames, active }: Props) {
     const wrap = canvasWrapRef.current;
     if (!canvas || !wrap) return;
 
+    // `desynchronized` targets Chrome’s low-latency path; WebKit can show glitches or missed paints.
     const c2d = canvas.getContext("2d", {
       alpha: false,
-      desynchronized: true,
+      ...(preferNativeScroll() ? {} : { desynchronized: true }),
     });
     if (!c2d) return;
 
@@ -362,7 +372,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
     let lastPreloadCenter = -1;
     let prevMode: HeroOverlayMode | undefined;
 
-    const cache = new FrameBitmapCache(24);
+    const cache = new FrameBitmapCache(52);
     let cancelled = false;
 
     const sizeRef = { w: 0, h: 0 };
@@ -373,39 +383,126 @@ export function ScrollFrameHero({ frames, active }: Props) {
       rm: reduceMotion,
     };
 
+    /** Last frame we fully painted from the scrub target (for hold on fast scroll). */
+    let lastPainted: { i0: number; i1: number; blend: number } | null = null;
+
+    const pinAround = (i0: number, i1: number, n: number) => {
+      const s = new Set<number>();
+      for (const i of [i0, i1, i0 - 1, i0 + 1, i1 - 1, i1 + 1, i0 - 2, i0 + 2]) {
+        if (i >= 0 && i < n) s.add(i);
+      }
+      if (lastPainted) {
+        if (lastPainted.i0 >= 0 && lastPainted.i0 < n) s.add(lastPainted.i0);
+        if (lastPainted.i1 >= 0 && lastPainted.i1 < n) s.add(lastPainted.i1);
+      }
+      cache.setPinned(s);
+    };
+
     const tryPaint = () => {
       if (cancelled) return;
       const { w, h } = sizeRef;
       if (w < 1 || h < 1) return;
 
-      const { i0, i1, blend, rm } = paintStateRef;
-      const b0 = cache.peek(i0);
-      const b1 = cache.peek(i1);
+      const n = frames.length;
+      const target = paintStateRef;
+      pinAround(target.i0, target.i1, n);
+      cache.touchIfPresent(target.i0);
+      cache.touchIfPresent(target.i1);
+
+      let i0 = target.i0;
+      let i1 = target.i1;
+      let blend = target.blend;
+      const rm = target.rm;
+
+      let b0 = cache.peek(i0);
+      let b1 = cache.peek(i1);
+      let fromTarget = true;
+
+      if (!b0 && lastPainted) {
+        const lb0 = cache.peek(lastPainted.i0);
+        const lb1 = cache.peek(lastPainted.i1);
+        if (lb0) {
+          fromTarget = false;
+          b0 = lb0;
+          if (
+            lastPainted.i0 === lastPainted.i1 ||
+            lastPainted.blend < 0.002
+          ) {
+            i0 = lastPainted.i0;
+            i1 = lastPainted.i0;
+            blend = 0;
+            b1 = lb0;
+          } else if (lb1) {
+            i0 = lastPainted.i0;
+            i1 = lastPainted.i1;
+            blend = lastPainted.blend;
+            b1 = lb1;
+          } else {
+            i0 = lastPainted.i0;
+            i1 = lastPainted.i0;
+            blend = 0;
+            b1 = lb0;
+          }
+        }
+      }
 
       c2d.fillStyle = "#0a0a0a";
       c2d.fillRect(0, 0, w, h);
 
+      if (!b0) return;
+
+      /** Snapshot what we actually drew (for hold-frame + cache pinning). */
+      const recordIfTarget = () => {
+        if (!fromTarget) return;
+        const t = target;
+        if (t.rm || t.i0 === t.i1 || t.blend < 0.002) {
+          lastPainted = { i0: t.i0, i1: t.i0, blend: 0 };
+          return;
+        }
+        const p0 = cache.peek(t.i0);
+        const p1 = cache.peek(t.i1);
+        if (p0 && !p1) {
+          lastPainted = { i0: t.i0, i1: t.i0, blend: 0 };
+          return;
+        }
+        if (t.blend > 0.998 && p1) {
+          lastPainted = { i0: t.i1, i1: t.i1, blend: 0 };
+          return;
+        }
+        if (p0 && p1) {
+          lastPainted = { i0: t.i0, i1: t.i1, blend: t.blend };
+        }
+      };
+
       if (rm) {
-        if (b0) drawImageCover(c2d, b0, w, h);
+        drawImageCover(c2d, b0, w, h);
+        recordIfTarget();
         return;
       }
-      if (!b0) return;
+
       if (i0 === i1 || blend < 0.002) {
         drawImageCover(c2d, b0, w, h);
+        recordIfTarget();
         return;
       }
+
       if (!b1) {
         drawImageCover(c2d, b0, w, h);
+        recordIfTarget();
         return;
       }
+
       if (blend > 0.998) {
         drawImageCover(c2d, b1, w, h);
+        recordIfTarget();
         return;
       }
+
       drawImageCover(c2d, b0, w, h);
       c2d.globalAlpha = blend;
       drawImageCover(c2d, b1, w, h);
       c2d.globalAlpha = 1;
+      recordIfTarget();
     };
 
     const resizeCanvas = () => {
@@ -430,15 +527,42 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     const prefetchWindow = (center: number) => {
       const n = frames.length;
-      for (let d = -12; d <= 12; d++) {
+      const native = preferNativeScroll();
+      const radius = native ? 12 : 28;
+      const list: number[] = [];
+      for (let d = -radius; d <= radius; d++) {
         const idx = center + d;
-        if (idx >= 0 && idx < n) {
+        if (idx >= 0 && idx < n) list.push(idx);
+      }
+      list.sort(
+        (a, b) => Math.abs(a - center) - Math.abs(b - center)
+      );
+
+      if (!native) {
+        for (const idx of list) {
           cache.prefetch(idx, frameSrc(frames[idx]), tryPaint);
         }
+        return;
       }
+
+      let ptr = 0;
+      const pump = () => {
+        if (cancelled) return;
+        const batch = 2;
+        for (let k = 0; k < batch && ptr < list.length; k++, ptr++) {
+          cache.prefetch(list[ptr], frameSrc(frames[list[ptr]]), tryPaint);
+        }
+        if (ptr >= list.length) return;
+        if (typeof requestIdleCallback !== "undefined") {
+          requestIdleCallback(pump, { timeout: 140 });
+        } else {
+          requestAnimationFrame(pump);
+        }
+      };
+      pump();
     };
 
-    const scrubSeconds = preferNativeScroll() ? 0.45 : 0.72;
+    const scrubSeconds = scrubSmoothingSeconds();
 
     const applyOverlayMode = (mode: HeroOverlayMode) => {
       const scrollHints = section.querySelectorAll<HTMLElement>(
@@ -485,6 +609,16 @@ export function ScrollFrameHero({ frames, active }: Props) {
           paintStateRef.i1 = i1;
           paintStateRef.blend = blend;
           paintStateRef.rm = reduceMotion;
+
+          pinAround(i0, i1, n);
+          void cache.getOrLoad(i0, frameSrc(frames[i0])).then(() => {
+            if (!cancelled) tryPaint();
+          });
+          if (i1 !== i0) {
+            void cache.getOrLoad(i1, frameSrc(frames[i1])).then(() => {
+              if (!cancelled) tryPaint();
+            });
+          }
           tryPaint();
 
           const preloadCenter = Math.round((i0 + i1) / 2);

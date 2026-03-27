@@ -1,16 +1,89 @@
 /**
  * LRU cache of decoded frames for canvas scrubbing.
- * Uses fetch + createImageBitmap (same pixels as <img>, fewer DOM layers).
+ * fetch + createImageBitmap. WebKit serializes heavy decodes — many parallel
+ * createImageBitmap calls freeze Safari; we cap concurrent decodes.
  */
+function defaultDecodeConcurrency(): number {
+  if (typeof navigator === "undefined") return 4;
+  const ua = navigator.userAgent;
+  const iOS =
+    /iPad|iPhone|iPod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (iOS) return 1;
+  if (
+    /Safari/i.test(ua) &&
+    !/Chrome|Chromium|CriOS|Edg|OPR|Brave/i.test(ua)
+  ) {
+    return 2;
+  }
+  return 5;
+}
+
 export class FrameBitmapCache {
   private readonly max: number;
+  private readonly decodeConcurrency: number;
   private readonly map = new Map<number, ImageBitmap>();
   /** LRU order: oldest at front, newest at end */
   private readonly lru: number[] = [];
   private readonly inflight = new Map<number, Promise<ImageBitmap>>();
+  /** Indices that must not be evicted (current scrub targets + neighbors). */
+  private pinned = new Set<number>();
 
-  constructor(maxEntries = 24) {
+  private dead = false;
+  private decodeRunning = 0;
+  private decodeWait: Array<{
+    resolve: () => void;
+    reject: (e: Error) => void;
+  }> = [];
+
+  constructor(maxEntries = 48, decodeConcurrency?: number) {
     this.max = maxEntries;
+    this.decodeConcurrency = decodeConcurrency ?? defaultDecodeConcurrency();
+  }
+
+  private enterDecodeSlot(): Promise<void> {
+    if (this.dead) {
+      return Promise.reject(new Error("FrameBitmapCache destroyed"));
+    }
+    return new Promise((resolve, reject) => {
+      if (this.dead) {
+        reject(new Error("FrameBitmapCache destroyed"));
+        return;
+      }
+      if (this.decodeRunning < this.decodeConcurrency) {
+        this.decodeRunning++;
+        resolve();
+        return;
+      }
+      this.decodeWait.push({ resolve, reject });
+    });
+  }
+
+  private leaveDecodeSlot() {
+    this.decodeRunning--;
+    if (this.dead || this.decodeWait.length === 0) return;
+    const w = this.decodeWait.shift()!;
+    this.decodeRunning++;
+    w.resolve();
+  }
+
+  private async withDecodeSlot<T>(task: () => Promise<T>): Promise<T> {
+    await this.enterDecodeSlot();
+    try {
+      return await task();
+    } finally {
+      this.leaveDecodeSlot();
+    }
+  }
+
+  /** Call before decode / peek so hot frames are not LRU-evicted during fast scroll. */
+  setPinned(indices: Iterable<number>) {
+    this.pinned = new Set(indices);
+  }
+
+  /** Move to MRU end if present (keeps likely-next frames in RAM). */
+  touchIfPresent(i: number) {
+    if (this.map.has(i)) this.bump(i);
   }
 
   peek(i: number): ImageBitmap | undefined {
@@ -26,11 +99,21 @@ export class FrameBitmapCache {
     this.lru.push(i);
   }
 
-  private evictOne() {
+  /** Evict LRU entry that is not pinned; if all pinned, evict oldest anyway. */
+  private evictOne(): boolean {
+    for (let i = 0; i < this.lru.length; i++) {
+      const victim = this.lru[i];
+      if (this.pinned.has(victim)) continue;
+      this.lru.splice(i, 1);
+      this.map.get(victim)?.close();
+      this.map.delete(victim);
+      return true;
+    }
     const victim = this.lru.shift();
-    if (victim === undefined) return;
+    if (victim === undefined) return false;
     this.map.get(victim)?.close();
     this.map.delete(victim);
+    return true;
   }
 
   getOrLoad(i: number, url: string): Promise<ImageBitmap> {
@@ -47,10 +130,19 @@ export class FrameBitmapCache {
           if (!r.ok) throw new Error(`Frame fetch ${r.status}`);
           return r.blob();
         })
-        .then((blob) => createImageBitmap(blob))
+        .then((blob) => {
+          if (this.dead) throw new Error("FrameBitmapCache destroyed");
+          return this.withDecodeSlot(() => createImageBitmap(blob));
+        })
         .then((bmp) => {
           this.inflight.delete(i);
-          while (this.lru.length >= this.max) this.evictOne();
+          if (this.dead) {
+            bmp.close();
+            throw new Error("FrameBitmapCache destroyed");
+          }
+          while (this.lru.length >= this.max) {
+            if (!this.evictOne()) break;
+          }
           this.map.get(i)?.close();
           this.map.set(i, bmp);
           this.bump(i);
@@ -76,9 +168,15 @@ export class FrameBitmapCache {
   }
 
   destroy() {
+    this.dead = true;
+    for (const w of this.decodeWait) {
+      w.reject(new Error("FrameBitmapCache destroyed"));
+    }
+    this.decodeWait.length = 0;
     for (const bmp of this.map.values()) bmp.close();
     this.map.clear();
     this.lru.length = 0;
     this.inflight.clear();
+    this.pinned.clear();
   }
 }
