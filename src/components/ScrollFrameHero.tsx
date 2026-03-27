@@ -22,7 +22,9 @@ gsap.registerPlugin(ScrollTrigger);
  * @see https://github.com/darkroomengineering/lenis/blob/main/README.md (GSAP section)
  */
 function scrubSmoothingSeconds(): number {
-  return preferNativeScroll() ? 1.25 : 1.05;
+  if (preferNativeScroll()) return 1.25;
+  if (isWebKit()) return 1.35;
+  return 1.05;
 }
 
 /**
@@ -379,7 +381,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
     let scrollFastForPin = false;
     let prevMode: HeroOverlayMode | undefined;
 
-    const cache = new FrameBitmapCache(72);
+    const webkit = isWebKit();
+    const cache = new FrameBitmapCache(webkit ? 56 : 72);
     let cancelled = false;
 
     const sizeRef = { w: 0, h: 0 };
@@ -573,7 +576,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
     const prefetchWindow = (center: number, dir: number, vel: number) => {
       const n = frames.length;
       const native = preferNativeScroll();
-      const baseRadius = native ? 22 : 42;
+      const baseRadius = native ? 22 : webkit ? 32 : 42;
       const fast = vel > 0.06;
       const ahead = fast ? Math.round(baseRadius * 1.75) : baseRadius;
       const behind = fast ? Math.round(baseRadius * 0.45) : baseRadius;
@@ -589,7 +592,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
       cache.cancelDistant(center, 110);
 
-      if (!native) {
+      const burstPrefetch = !native && !webkit;
+
+      if (burstPrefetch) {
         for (const idx of list) {
           cache.prefetch(idx, frameSrc(frames[idx]), tryPaint);
         }
@@ -597,9 +602,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
       }
 
       let ptr = 0;
+      const batch = native ? 10 : 6;
       const pump = () => {
         if (cancelled) return;
-        const batch = 10;
         for (let k = 0; k < batch && ptr < list.length; k++, ptr++) {
           cache.prefetch(list[ptr], frameSrc(frames[list[ptr]]), tryPaint);
         }

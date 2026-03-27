@@ -17,7 +17,7 @@ function defaultDecodeConcurrency(): number {
     /Safari/i.test(ua) &&
     !/Chrome|Chromium|CriOS|Edg|OPR|Brave/i.test(ua)
   ) {
-    return 4;
+    return 2;
   }
   return 5;
 }
