@@ -23,6 +23,9 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    const root = document.documentElement;
+    root.classList.add("lenis", "lenis-smooth");
+
     const lenis = new Lenis({
       lerp: 0.09,
       smoothWheel: true,
@@ -42,6 +45,7 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
     gsap.ticker.lagSmoothing(0);
 
     return () => {
+      root.classList.remove("lenis", "lenis-smooth");
       gsap.ticker.remove(onTick);
       gsap.ticker.lagSmoothing(500, 33);
       lenis.destroy();

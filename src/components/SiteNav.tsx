@@ -214,11 +214,7 @@ export function SiteNav() {
                 closeDesk();
               }}
             >
-              <BrandLogo
-                className="h-8 w-auto sm:h-9"
-                priority
-                alt=""
-              />
+              <BrandLogo className="h-8 w-auto sm:h-9" alt="" />
               <span className="text-[15px] font-semibold tracking-tight">
                 iCAM Video
               </span>
@@ -371,7 +367,11 @@ export function SiteNav() {
                   aria-label="iCAM Video Telematics, home"
                   onClick={closeMobile}
                 >
-                  <BrandLogo className="h-8 w-auto shrink-0" alt="" />
+                  <BrandLogo
+                    className="h-8 w-auto shrink-0"
+                    alt=""
+                    priority={false}
+                  />
                   <span className="text-base font-semibold tracking-tight">
                     iCAM Video
                   </span>

@@ -312,7 +312,11 @@ export function MarketingSections() {
           <div>
             <div className="flex items-center gap-3">
               <span className="inline-flex shrink-0" aria-hidden>
-                <BrandLogo className="h-10 w-auto sm:h-11" alt="" />
+                <BrandLogo
+                  className="h-10 w-auto sm:h-11"
+                  alt=""
+                  priority={false}
+                />
               </span>
               <span className="text-sm font-semibold text-white">
                 iCAM Video Telematics

@@ -13,7 +13,7 @@ type Props = {
 export function BrandLogo({
   className,
   alt = "iCAM Video Telematics",
-  priority,
+  priority = true,
 }: Props) {
   return (
     <Image
@@ -22,6 +22,7 @@ export function BrandLogo({
       width={512}
       height={512}
       priority={priority}
+      loading={priority ? "eager" : "lazy"}
       className={`w-auto object-contain ${className ?? ""}`}
     />
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Props = {
   onComplete: () => void;
@@ -11,31 +11,8 @@ const BRAND = "#090088";
 
 const WORDS = ["iCAM", "Video", "Telematics"] as const;
 
-function FilmGrain({ filterId }: { filterId: string }) {
-  return (
-    <div
-      className="pointer-events-none absolute inset-0 z-[1] overflow-hidden opacity-[0.06]"
-      aria-hidden
-    >
-      <svg className="h-full w-full">
-        <filter id={filterId}>
-          <feTurbulence
-            type="fractalNoise"
-            baseFrequency="0.85"
-            numOctaves={4}
-            stitchTiles="stitch"
-            result="noise"
-          />
-          <feColorMatrix type="saturate" values="0" in="noise" />
-        </filter>
-        <rect width="100%" height="100%" filter={`url(#${filterId})`} />
-      </svg>
-    </div>
-  );
-}
-
 function CornerFrames({ drawOut }: { drawOut: boolean }) {
-  const stroke = "rgba(15, 23, 42, 0.2)";
+  const stroke = "rgba(15, 23, 42, 0.14)";
   const r = 40;
   const w = 240;
   const h = 168;
@@ -102,9 +79,9 @@ const wordContainer = {
 const wordItem = {
   hidden: {
     opacity: 0,
-    y: 40,
-    rotateX: -14,
-    filter: "blur(12px)",
+    y: 36,
+    rotateX: -8,
+    filter: "blur(6px)",
   },
   show: {
     opacity: 1,
@@ -112,15 +89,15 @@ const wordItem = {
     rotateX: 0,
     filter: "blur(0px)",
     transition: {
-      duration: 0.75,
+      duration: 0.72,
       ease: [0.22, 1, 0.36, 1] as const,
     },
   },
   exit: {
     opacity: 0,
-    y: -26,
-    rotateX: 10,
-    filter: "blur(10px)",
+    y: -22,
+    rotateX: 6,
+    filter: "blur(6px)",
     transition: {
       duration: 0.36,
       ease: [0.4, 0, 0.2, 1] as const,
@@ -135,7 +112,6 @@ const UNMOUNT_AFTER_EXIT_MS = Math.round(EXIT_ROOT_DELAY_MS + EXIT_ROOT_DURATION
 
 export function SplashScreen({ onComplete }: Props) {
   const reduceMotion = useReducedMotion();
-  const noiseId = useId().replace(/:/g, "");
   const [phase, setPhase] = useState<"show" | "hold" | "exit">("show");
   const enterScheduledRef = useRef(false);
   const completeRef = useRef(false);
@@ -189,7 +165,7 @@ export function SplashScreen({ onComplete }: Props) {
         transition={{ duration: 0.45, ease: "easeOut", delay: 0.15 }}
         onAnimationComplete={finish}
       >
-        <p className="text-balance text-center text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+        <p className="text-balance px-4 text-center text-4xl font-semibold tracking-tight text-zinc-900 sm:text-5xl md:text-6xl">
           iCAM Video Telematics
         </p>
       </motion.div>
@@ -202,7 +178,7 @@ export function SplashScreen({ onComplete }: Props) {
       initial={{ opacity: 1 }}
       animate={
         phase === "exit"
-          ? { opacity: 0, scale: 1.025, filter: "blur(16px)" }
+          ? { opacity: 0, scale: 1.02, filter: "blur(12px)" }
           : { opacity: 1, scale: 1, filter: "blur(0px)" }
       }
       transition={{
@@ -212,18 +188,16 @@ export function SplashScreen({ onComplete }: Props) {
       }}
     >
       <div
-        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_90%_72%_at_50%_42%,oklch(0.98_0.008_85)_0%,oklch(0.94_0.012_78)_48%,oklch(0.89_0.025_270)_100%)] opacity-[0.92]"
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_95%_80%_at_50%_45%,oklch(0.99_0.006_85)_0%,oklch(0.96_0.01_78)_55%,oklch(0.93_0.02_270)_100%)]"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_130%_90%_at_50%_115%,transparent_50%,oklch(0.2_0.05_270_/_0.08)_100%)]"
+        className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(ellipse_120%_85%_at_50%_100%,transparent_45%,oklch(0.25_0.04_270_/_0.06)_100%)]"
         aria-hidden
       />
 
-      <FilmGrain filterId={`splash-grain-${noiseId}`} />
-
       <motion.div
-        className="pointer-events-none absolute left-1/2 top-[min(36%,13rem)] z-[3] h-[2px] w-[min(11rem,40vw)] -translate-x-1/2 rounded-full bg-[#090088] shadow-[0_0_24px_oklch(0.35_0.2_278_/_0.35)]"
+        className="pointer-events-none absolute left-1/2 top-[min(32%,11rem)] z-[3] h-[3px] w-[min(16rem,72vw)] -translate-x-1/2 rounded-full bg-[#090088] shadow-[0_0_28px_oklch(0.35_0.18_278_/_0.28)]"
         style={{ backgroundColor: BRAND }}
         initial={{ scaleX: 0, opacity: 0 }}
         animate={
@@ -244,11 +218,11 @@ export function SplashScreen({ onComplete }: Props) {
       <CornerFrames drawOut={phase === "exit"} />
 
       <div
-        className="relative z-[4] px-6 [perspective:880px]"
+        className="relative z-[4] max-w-[min(100%,42rem)] px-5 sm:max-w-none sm:px-8 [perspective:1200px]"
         style={{ transformStyle: "preserve-3d" }}
       >
         <motion.div
-          className="flex flex-wrap items-baseline justify-center gap-x-[0.38em] gap-y-1"
+          className="flex flex-wrap items-baseline justify-center gap-x-[0.32em] gap-y-2 text-center"
           variants={wordContainer}
           initial="hidden"
           animate={phase === "exit" ? "exit" : "show"}
@@ -256,7 +230,7 @@ export function SplashScreen({ onComplete }: Props) {
           {WORDS.map((word, i) => (
             <motion.span
               key={word}
-              className={`inline-block text-[clamp(1.9rem,7.8vw,4.35rem)] font-semibold leading-[1.04] tracking-[-0.025em] text-zinc-950 ${
+              className={`inline-block text-center text-6xl font-semibold leading-[1.05] tracking-[-0.03em] text-zinc-950 sm:text-7xl md:text-8xl ${
                 word === "iCAM" ? "font-bold" : ""
               }`}
               variants={wordItem}
@@ -272,20 +246,20 @@ export function SplashScreen({ onComplete }: Props) {
         </motion.div>
 
         <motion.p
-          className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[0.38em] text-zinc-500"
-          initial={{ opacity: 0, y: 10 }}
+          className="mt-8 text-center text-sm font-medium uppercase tracking-[0.22em] text-zinc-600 sm:mt-10 sm:text-base sm:tracking-[0.28em]"
+          initial={{ opacity: 0, y: 8 }}
           animate={
             phase === "exit"
-              ? { opacity: 0, y: -8 }
+              ? { opacity: 0, y: -6 }
               : { opacity: 1, y: 0 }
           }
           transition={{
             duration: phase === "exit" ? 0.28 : 0.55,
-            delay: phase === "exit" ? 0 : 1.02,
+            delay: phase === "exit" ? 0 : 0.95,
             ease: [0.22, 1, 0.36, 1],
           }}
         >
-          Fleet video telematics
+          Your Future Starts With Us
         </motion.p>
       </div>
     </motion.div>

@@ -1,6 +1,8 @@
 "use client";
 
+import { drawImageCover } from "@/lib/canvasImageCover";
 import { BRAND_BLUE } from "@/lib/brand";
+import { FrameBitmapCache } from "@/lib/frameBitmapCache";
 import { preferNativeScroll } from "@/lib/preferNativeScroll";
 import { frameSrc } from "@/lib/terminalFrameUrl";
 import { gsap } from "gsap";
@@ -15,6 +17,9 @@ gsap.registerPlugin(ScrollTrigger);
  * Sticky hero is 100vh; scroll distance through the section ≈ (return − 100)vh.
  * Scales with `frames.length` from `readTerminalManifest()` (e.g. ~335 WebPs).
  * Raise the multiplier if the scrub still feels fast.
+ *
+ * Scrub draws **fractional blends** on a single canvas from **ImageBitmap** LRU
+ * cache (fetch + createImageBitmap). Pairs with Lenis smooth scroll when enabled.
  */
 function heroSectionHeightVh(frameCount: number): number {
   if (frameCount <= 0) return 100;
@@ -242,12 +247,6 @@ function applyPhase1Typewriter(
   }
 }
 
-function preloadFrame(frames: string[], i: number) {
-  if (i < 0 || i >= frames.length) return;
-  const img = new Image();
-  img.src = frameSrc(frames[i]);
-}
-
 type HeroOverlayMode = "phase1" | "between" | "phase2";
 
 function getOverlayMode(
@@ -268,17 +267,32 @@ function getOverlayMode(
   return "phase1";
 }
 
+function computeScrollBlend(
+  p: number,
+  n: number,
+  reduceMotion: boolean
+): { modeIdx: number; i0: number; i1: number; blend: number } {
+  if (n <= 0) return { modeIdx: 0, i0: 0, i1: 0, blend: 0 };
+  if (reduceMotion) {
+    const k = Math.min(n - 1, Math.max(0, Math.floor(p * n)));
+    return { modeIdx: k, i0: k, i1: k, blend: 0 };
+  }
+  if (n === 1) return { modeIdx: 0, i0: 0, i1: 0, blend: 0 };
+  const t = p * (n - 1);
+  const i0 = Math.min(n - 1, Math.max(0, Math.floor(t)));
+  const i1 = Math.min(n - 1, i0 + 1);
+  const blend = t - i0;
+  const modeIdx = Math.min(n - 1, Math.max(0, Math.round(t)));
+  return { modeIdx, i0, i1, blend };
+}
+
 export function ScrollFrameHero({ frames, active }: Props) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const phase1Ref = useRef<HTMLDivElement | null>(null);
   const phase2Ref = useRef<HTMLDivElement | null>(null);
   const followerRef = useRef<HTMLDivElement | null>(null);
-  const imgARef = useRef<HTMLImageElement | null>(null);
-  const imgBRef = useRef<HTMLImageElement | null>(null);
-  const topIsARef = useRef(true);
-  const displayedIndexRef = useRef<number | null>(null);
-  const loadGenerationRef = useRef(0);
-  const targetFrameRef = useRef(0);
+  const canvasWrapRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const posRef = useRef({ x: 0, y: 0 });
   const rafRef = useRef<number | null>(null);
   const [finePointer, setFinePointer] = useState(false);
@@ -320,9 +334,15 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
-    const a = imgARef.current;
-    const b = imgBRef.current;
-    if (!a || !b) return;
+    const canvas = canvasRef.current;
+    const wrap = canvasWrapRef.current;
+    if (!canvas || !wrap) return;
+
+    const c2d = canvas.getContext("2d", {
+      alpha: false,
+      desynchronized: true,
+    });
+    if (!c2d) return;
 
     const section = sectionRef.current;
     const p1 = phase1Ref.current;
@@ -339,46 +359,82 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     let letterEls1: HTMLElement[] | null = null;
     let letterEls2: HTMLElement[] | null = null;
-    let lastNextForPreload = -1;
+    let lastPreloadCenter = -1;
     let prevMode: HeroOverlayMode | undefined;
 
-    const syncFrame = (want: number) => {
-      if (want < 0 || want >= frames.length) return;
-      const url = frameSrc(frames[want]);
+    const cache = new FrameBitmapCache(24);
+    let cancelled = false;
 
-      if (displayedIndexRef.current === null) {
-        a.src = url;
-        b.src = url;
-        a.style.zIndex = "2";
-        b.style.zIndex = "1";
-        topIsARef.current = true;
-        displayedIndexRef.current = want;
+    const sizeRef = { w: 0, h: 0 };
+    const paintStateRef = {
+      i0: 0,
+      i1: 0,
+      blend: 0,
+      rm: reduceMotion,
+    };
+
+    const tryPaint = () => {
+      if (cancelled) return;
+      const { w, h } = sizeRef;
+      if (w < 1 || h < 1) return;
+
+      const { i0, i1, blend, rm } = paintStateRef;
+      const b0 = cache.peek(i0);
+      const b1 = cache.peek(i1);
+
+      c2d.fillStyle = "#0a0a0a";
+      c2d.fillRect(0, 0, w, h);
+
+      if (rm) {
+        if (b0) drawImageCover(c2d, b0, w, h);
         return;
       }
+      if (!b0) return;
+      if (i0 === i1 || blend < 0.002) {
+        drawImageCover(c2d, b0, w, h);
+        return;
+      }
+      if (!b1) {
+        drawImageCover(c2d, b0, w, h);
+        return;
+      }
+      if (blend > 0.998) {
+        drawImageCover(c2d, b1, w, h);
+        return;
+      }
+      drawImageCover(c2d, b0, w, h);
+      c2d.globalAlpha = blend;
+      drawImageCover(c2d, b1, w, h);
+      c2d.globalAlpha = 1;
+    };
 
-      if (want === displayedIndexRef.current) return;
+    const resizeCanvas = () => {
+      if (cancelled) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const cw = wrap.clientWidth;
+      const ch = wrap.clientHeight;
+      if (cw < 1 || ch < 1) return;
+      sizeRef.w = cw;
+      sizeRef.h = ch;
+      canvas.width = Math.round(cw * dpr);
+      canvas.height = Math.round(ch * dpr);
+      canvas.style.width = `${cw}px`;
+      canvas.style.height = `${ch}px`;
+      c2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+      tryPaint();
+    };
 
-      const topEl = topIsARef.current ? a : b;
-      const bottomEl = topIsARef.current ? b : a;
-      const gen = ++loadGenerationRef.current;
+    const ro = new ResizeObserver(() => resizeCanvas());
+    ro.observe(wrap);
+    resizeCanvas();
 
-      const bringBottomForward = () => {
-        if (gen !== loadGenerationRef.current) return;
-        if (targetFrameRef.current !== want) return;
-        if (displayedIndexRef.current === want) return;
-        bottomEl.style.zIndex = "2";
-        topEl.style.zIndex = "1";
-        topIsARef.current = bottomEl === a;
-        displayedIndexRef.current = want;
-      };
-
-      bottomEl.onload = () => {
-        requestAnimationFrame(bringBottomForward);
-      };
-      bottomEl.src = url;
-
-      if (bottomEl.complete && bottomEl.naturalWidth > 0) {
-        requestAnimationFrame(bringBottomForward);
+    const prefetchWindow = (center: number) => {
+      const n = frames.length;
+      for (let d = -12; d <= 12; d++) {
+        const idx = center + d;
+        if (idx >= 0 && idx < n) {
+          cache.prefetch(idx, frameSrc(frames[idx]), tryPaint);
+        }
       }
     };
 
@@ -420,18 +476,24 @@ export function ScrollFrameHero({ frames, active }: Props) {
         onUpdate: (self) => {
           const p = self.progress;
           const n = frames.length;
-          const next = Math.min(n - 1, Math.max(0, Math.floor(p * n)));
-          targetFrameRef.current = next;
-          syncFrame(next);
-          if (next !== lastNextForPreload) {
-            lastNextForPreload = next;
-            preloadFrame(frames, next - 2);
-            preloadFrame(frames, next - 1);
-            preloadFrame(frames, next + 1);
-            preloadFrame(frames, next + 2);
+          const { modeIdx, i0, i1, blend } = computeScrollBlend(
+            p,
+            n,
+            reduceMotion
+          );
+          paintStateRef.i0 = i0;
+          paintStateRef.i1 = i1;
+          paintStateRef.blend = blend;
+          paintStateRef.rm = reduceMotion;
+          tryPaint();
+
+          const preloadCenter = Math.round((i0 + i1) / 2);
+          if (preloadCenter !== lastPreloadCenter) {
+            lastPreloadCenter = preloadCenter;
+            prefetchWindow(preloadCenter);
           }
 
-          const mode = getOverlayMode(next, eraseEndIdx, phase2StartIdx);
+          const mode = getOverlayMode(modeIdx, eraseEndIdx, phase2StartIdx);
 
           if (prevMode !== mode) {
             prevMode = mode;
@@ -505,22 +567,30 @@ export function ScrollFrameHero({ frames, active }: Props) {
       if (hints.length > 0) gsap.set(hints, { clearProps: "autoAlpha" });
     }, section);
 
-    displayedIndexRef.current = null;
-    loadGenerationRef.current += 1;
-    targetFrameRef.current = 0;
-    syncFrame(0);
-    lastNextForPreload = 0;
-    preloadFrame(frames, 0);
-    preloadFrame(frames, 1);
-    preloadFrame(frames, 2);
+    const init = computeScrollBlend(0, frames.length, reduceMotion);
+    paintStateRef.i0 = init.i0;
+    paintStateRef.i1 = init.i1;
+    paintStateRef.blend = init.blend;
+    paintStateRef.rm = reduceMotion;
+    lastPreloadCenter = -1;
+    prefetchWindow(0);
+    void cache.getOrLoad(0, frameSrc(frames[0])).then(() => {
+      if (!cancelled) tryPaint();
+    });
+    if (frames.length > 1) {
+      void cache.getOrLoad(1, frameSrc(frames[1])).then(() => {
+        if (!cancelled) tryPaint();
+      });
+    }
 
     ScrollTrigger.refresh();
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 
     return () => {
+      cancelled = true;
+      ro.disconnect();
+      cache.destroy();
       ctx.revert();
-      displayedIndexRef.current = null;
-      loadGenerationRef.current += 1;
     };
   }, [active, frames, framesKey, frames.length]);
 
@@ -613,25 +683,17 @@ export function ScrollFrameHero({ frames, active }: Props) {
           </p>
         )}
         <div className="relative isolate flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-neutral-950">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={imgARef}
-            src={frameSrc(frames[0])}
-            alt=""
-            decoding="async"
-            fetchPriority="high"
-            draggable={false}
-            className="absolute inset-0 z-[1] h-full w-full object-cover [backface-visibility:hidden] [transform:translateZ(0)]"
-          />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={imgBRef}
-            src={frameSrc(frames[0])}
-            alt=""
-            decoding="async"
-            draggable={false}
-            className="absolute inset-0 z-[2] h-full w-full object-cover [backface-visibility:hidden] [transform:translateZ(0)]"
-          />
+          <div
+            ref={canvasWrapRef}
+            className="absolute inset-0 z-[1] [transform:translateZ(0)]"
+          >
+            <canvas
+              ref={canvasRef}
+              role="img"
+              aria-label="Scroll-driven product sequence"
+              className="block h-full w-full [backface-visibility:hidden]"
+            />
+          </div>
 
           <div
             ref={phase1Ref}
