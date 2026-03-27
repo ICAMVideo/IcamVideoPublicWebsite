@@ -5,6 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type Props = {
   onComplete: () => void;
+  /** When false the splash holds after the enter animation until the hero frame is ready. */
+  waitForReady?: boolean;
 };
 
 const BRAND = "#090088";
@@ -110,7 +112,7 @@ const EXIT_ROOT_DELAY_MS = 360;
 const EXIT_ROOT_DURATION_MS = 0.52;
 const UNMOUNT_AFTER_EXIT_MS = Math.round(EXIT_ROOT_DELAY_MS + EXIT_ROOT_DURATION_MS * 1000) + 80;
 
-export function SplashScreen({ onComplete }: Props) {
+export function SplashScreen({ onComplete, waitForReady = true }: Props) {
   const reduceMotion = useReducedMotion();
   const [phase, setPhase] = useState<"show" | "hold" | "exit">("show");
   const enterScheduledRef = useRef(false);
@@ -144,9 +146,10 @@ export function SplashScreen({ onComplete }: Props) {
 
   useEffect(() => {
     if (phase !== "hold") return;
+    if (!waitForReady) return;
     const t = window.setTimeout(() => setPhase("exit"), HOLD_MS);
     return () => window.clearTimeout(t);
-  }, [phase]);
+  }, [phase, waitForReady]);
 
   useEffect(() => {
     if (reduceMotion) return;

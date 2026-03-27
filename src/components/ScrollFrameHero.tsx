@@ -3,7 +3,7 @@
 import { drawImageCover } from "@/lib/canvasImageCover";
 import { BRAND_BLUE } from "@/lib/brand";
 import { FrameBitmapCache } from "@/lib/frameBitmapCache";
-import { preferNativeScroll } from "@/lib/preferNativeScroll";
+import { isWebKit, preferNativeScroll } from "@/lib/preferNativeScroll";
 import { frameSrc } from "@/lib/terminalFrameUrl";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -14,9 +14,8 @@ const CURSOR_OFFSET = 14;
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * ScrollTrigger `scrub` seconds: higher = progress eases toward scroll (fewer frame jumps per wheel tick).
- * WebKit uses native scroll (no Lenis); a **short** scrub (we previously used 0.45s) makes progress snap
- * faster than `createImageBitmap` can keep up → black / stale frame. Chrome+Lenis used 0.72s.
+ * ScrollTrigger `scrub` seconds. All Lenis browsers share the same value now.
+ * Only iOS (native scroll, no Lenis) gets a higher value so progress doesn't outrun decode.
  */
 function scrubSmoothingSeconds(): number {
   return preferNativeScroll() ? 1.05 : 0.72;
@@ -350,7 +349,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
     // `desynchronized` targets Chrome’s low-latency path; WebKit can show glitches or missed paints.
     const c2d = canvas.getContext("2d", {
       alpha: false,
-      ...(preferNativeScroll() ? {} : { desynchronized: true }),
+      ...(isWebKit() ? {} : { desynchronized: true }),
     });
     if (!c2d) return;
 
@@ -528,7 +527,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
     const prefetchWindow = (center: number) => {
       const n = frames.length;
       const native = preferNativeScroll();
-      const radius = native ? 12 : 28;
+      const radius = native ? 12 : 24;
       const list: number[] = [];
       for (let d = -radius; d <= radius; d++) {
         const idx = center + d;
@@ -611,13 +610,19 @@ export function ScrollFrameHero({ frames, active }: Props) {
           paintStateRef.rm = reduceMotion;
 
           pinAround(i0, i1, n);
-          void cache.getOrLoad(i0, frameSrc(frames[i0])).then(() => {
-            if (!cancelled) tryPaint();
-          });
-          if (i1 !== i0) {
-            void cache.getOrLoad(i1, frameSrc(frames[i1])).then(() => {
+          void cache
+            .getOrLoad(i0, frameSrc(frames[i0]))
+            .then(() => {
               if (!cancelled) tryPaint();
-            });
+            })
+            .catch(() => {});
+          if (i1 !== i0) {
+            void cache
+              .getOrLoad(i1, frameSrc(frames[i1]))
+              .then(() => {
+                if (!cancelled) tryPaint();
+              })
+              .catch(() => {});
           }
           tryPaint();
 
@@ -708,13 +713,19 @@ export function ScrollFrameHero({ frames, active }: Props) {
     paintStateRef.rm = reduceMotion;
     lastPreloadCenter = -1;
     prefetchWindow(0);
-    void cache.getOrLoad(0, frameSrc(frames[0])).then(() => {
-      if (!cancelled) tryPaint();
-    });
-    if (frames.length > 1) {
-      void cache.getOrLoad(1, frameSrc(frames[1])).then(() => {
+    void cache
+      .getOrLoad(0, frameSrc(frames[0]))
+      .then(() => {
         if (!cancelled) tryPaint();
-      });
+      })
+      .catch(() => {});
+    if (frames.length > 1) {
+      void cache
+        .getOrLoad(1, frameSrc(frames[1]))
+        .then(() => {
+          if (!cancelled) tryPaint();
+        })
+        .catch(() => {});
     }
 
     ScrollTrigger.refresh();

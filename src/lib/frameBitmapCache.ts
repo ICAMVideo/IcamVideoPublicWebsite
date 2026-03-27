@@ -14,7 +14,7 @@ function defaultDecodeConcurrency(): number {
     /Safari/i.test(ua) &&
     !/Chrome|Chromium|CriOS|Edg|OPR|Brave/i.test(ua)
   ) {
-    return 2;
+    return 4;
   }
   return 5;
 }
@@ -25,7 +25,7 @@ export class FrameBitmapCache {
   private readonly map = new Map<number, ImageBitmap>();
   /** LRU order: oldest at front, newest at end */
   private readonly lru: number[] = [];
-  private readonly inflight = new Map<number, Promise<ImageBitmap>>();
+  private readonly inflight = new Map<number, Promise<ImageBitmap | undefined>>();
   /** Indices that must not be evicted (current scrub targets + neighbors). */
   private pinned = new Set<number>();
 
@@ -68,11 +68,13 @@ export class FrameBitmapCache {
   }
 
   private async withDecodeSlot<T>(task: () => Promise<T>): Promise<T> {
-    await this.enterDecodeSlot();
+    let acquired = false;
     try {
+      await this.enterDecodeSlot();
+      acquired = true;
       return await task();
     } finally {
-      this.leaveDecodeSlot();
+      if (acquired) this.leaveDecodeSlot();
     }
   }
 
@@ -116,7 +118,9 @@ export class FrameBitmapCache {
     return true;
   }
 
-  getOrLoad(i: number, url: string): Promise<ImageBitmap> {
+  getOrLoad(i: number, url: string): Promise<ImageBitmap | undefined> {
+    if (this.dead) return Promise.resolve(undefined);
+
     const existing = this.map.get(i);
     if (existing) {
       this.bump(i);
@@ -150,6 +154,13 @@ export class FrameBitmapCache {
         })
         .catch((err) => {
           this.inflight.delete(i);
+          if (this.dead) return undefined;
+          if (
+            err instanceof Error &&
+            err.message === "FrameBitmapCache destroyed"
+          ) {
+            return undefined;
+          }
           throw err;
         });
       this.inflight.set(i, p);
