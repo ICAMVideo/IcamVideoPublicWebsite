@@ -141,9 +141,8 @@ export class FrameBitmapCache {
           if (!r.ok) throw new Error(`Frame fetch ${r.status}`);
           return r.blob();
         })
-        .then(async (blob) => {
+        .then((blob) => {
           if (this.dead) throw new Error("FrameBitmapCache destroyed");
-          await new Promise<void>((r) => requestAnimationFrame(() => r()));
           return this.withDecodeSlot(() => createImageBitmap(blob));
         })
         .then((bmp) => {

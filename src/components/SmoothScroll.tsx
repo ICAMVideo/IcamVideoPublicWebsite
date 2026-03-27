@@ -9,9 +9,12 @@ import { useEffect } from "react";
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * Inertial smooth scrolling + ties Lenis into GSAP's ticker so ScrollTrigger
- * stays in sync. Skipped only when prefers-reduced-motion is set or on iOS
- * (where OS momentum conflicts with Lenis). Desktop Safari now uses Lenis.
+ * Matches Lenis + GSAP guidance: `scroll` → ScrollTrigger.update, ticker raf,
+ * lagSmoothing(0). That fixes sync/jank; it does not speed up image decode.
+ *
+ * @see https://github.com/darkroomengineering/lenis/blob/main/README.md
+ *
+ * Skipped when prefers-reduced-motion or on iOS (native scroll; see preferNativeScroll).
  */
 export function SmoothScroll({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -29,7 +32,7 @@ export function SmoothScroll({ children }: { children: React.ReactNode }) {
     const webkit = isWebKit();
 
     const lenis = new Lenis({
-      lerp: webkit ? 0.1 : 0.09,
+      lerp: webkit ? 0.075 : 0.085,
       smoothWheel: true,
       syncTouch: !webkit,
       syncTouchLerp: 0.08,

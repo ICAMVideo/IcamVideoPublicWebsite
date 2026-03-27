@@ -14,11 +14,15 @@ const CURSOR_OFFSET = 14;
 gsap.registerPlugin(ScrollTrigger);
 
 /**
- * ScrollTrigger `scrub` seconds. All Lenis browsers share the same value now.
- * Only iOS (native scroll, no Lenis) gets a higher value so progress doesn't outrun decode.
+ * ScrollTrigger `scrub` duration (seconds): timeline progress eases toward scroll
+ * position. Higher = less violent frame-index changes while the wheel/trackpad
+ * moves fast, so WebP decode can keep up. Lenis README + GSAP setup is already
+ * correct; this is the knob that actually paces the canvas vs CPU decode.
+ *
+ * @see https://github.com/darkroomengineering/lenis/blob/main/README.md (GSAP section)
  */
 function scrubSmoothingSeconds(): number {
-  return preferNativeScroll() ? 1.05 : 0.72;
+  return preferNativeScroll() ? 1.25 : 1.05;
 }
 
 /**
