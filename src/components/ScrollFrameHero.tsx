@@ -385,6 +385,26 @@ export function ScrollFrameHero({ frames, active }: Props) {
     /** Last frame we fully painted from the scrub target (for hold on fast scroll). */
     let lastPainted: { i0: number; i1: number; blend: number } | null = null;
 
+    /**
+     * When we fall behind (target frames not decoded yet), schedule rAF repaints
+     * until we catch up. This makes Safari recover quickly after fast scroll.
+     */
+    let catchUpRaf: number | null = null;
+
+    const scheduleCatchUp = () => {
+      if (catchUpRaf != null || cancelled) return;
+      catchUpRaf = requestAnimationFrame(() => {
+        catchUpRaf = null;
+        if (cancelled) return;
+        const b0 = cache.peek(paintStateRef.i0);
+        if (!b0) {
+          scheduleCatchUp();
+          return;
+        }
+        tryPaint();
+      });
+    };
+
     const pinAround = (i0: number, i1: number, n: number) => {
       const s = new Set<number>();
       for (const i of [i0, i1, i0 - 1, i0 + 1, i1 - 1, i1 + 1, i0 - 2, i0 + 2]) {
@@ -443,6 +463,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
             b1 = lb0;
           }
         }
+        scheduleCatchUp();
       }
 
       c2d.fillStyle = "#0a0a0a";
@@ -610,18 +631,23 @@ export function ScrollFrameHero({ frames, active }: Props) {
           paintStateRef.rm = reduceMotion;
 
           pinAround(i0, i1, n);
+
+          const repaintWhenReady = () => {
+            if (cancelled) return;
+            tryPaint();
+            requestAnimationFrame(() => {
+              if (!cancelled) tryPaint();
+            });
+          };
+
           void cache
             .getOrLoad(i0, frameSrc(frames[i0]))
-            .then(() => {
-              if (!cancelled) tryPaint();
-            })
+            .then(repaintWhenReady)
             .catch(() => {});
           if (i1 !== i0) {
             void cache
               .getOrLoad(i1, frameSrc(frames[i1]))
-              .then(() => {
-                if (!cancelled) tryPaint();
-              })
+              .then(repaintWhenReady)
               .catch(() => {});
           }
           tryPaint();
@@ -733,6 +759,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     return () => {
       cancelled = true;
+      if (catchUpRaf != null) cancelAnimationFrame(catchUpRaf);
       ro.disconnect();
       cache.destroy();
       ctx.revert();
