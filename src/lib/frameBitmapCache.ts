@@ -1,31 +1,54 @@
+import {
+  destroyTerminalDecodePool,
+  getTerminalDecodePool,
+} from "@/lib/terminalDecodePool";
+import { getWarmTerminalBlob } from "@/lib/terminalFrameBlobWarmup";
+
 /**
  * LRU cache of decoded frames for canvas scrubbing.
- * fetch + createImageBitmap. WebKit serializes heavy decodes — many parallel
- * createImageBitmap calls freeze Safari; we cap concurrent decodes.
+ * First visit: `fetch` → `blob` → `createImageBitmap`. After that, the **blob is
+ * retained** in memory; if the ImageBitmap is LRU-evicted, the next visit only
+ * re-decodes (no second `fetch`, so DevTools stops “spiking” on repeat frames).
  *
- * Supports AbortController per fetch so stale prefetches (frames already
- * scrolled past) can be cancelled, freeing bandwidth for the current target.
+ * WebKit serializes heavy decodes — we cap concurrent `createImageBitmap` calls.
+ * AbortController cancels in-flight **network** prefetches far from the scrub head.
  */
+function isIOSLike(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return (
+    /iPad|iPhone|iPod/i.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
 function defaultDecodeConcurrency(): number {
   if (typeof navigator === "undefined") return 4;
   const ua = navigator.userAgent;
-  const iOS =
-    /iPad|iPhone|iPod/i.test(ua) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  if (iOS) return 1;
+  if (isIOSLike()) return 1;
   if (
     /Safari/i.test(ua) &&
     !/Chrome|Chromium|CriOS|Edg|OPR|Brave/i.test(ua)
   ) {
     return 2;
   }
-  return 5;
+  /** Chrome/Edge/Firefox: higher parallelism hides disk-cache + decode latency when scrubbing fast. */
+  return 8;
 }
 
 export class FrameBitmapCache {
   private readonly max: number;
   private readonly decodeConcurrency: number;
+  /** Off-main-thread decode (Chromium prod); falls back to main on failure. */
+  private readonly useWorkerDecode: boolean;
+  /** Keep fetched blobs in RAM for instant re-decode (skipped on iOS to save memory). */
+  private readonly retainBlobBytes: boolean;
   private readonly map = new Map<number, ImageBitmap>();
+  /**
+   * Raw bytes kept after the first successful fetch. Re-decoding after an ImageBitmap
+   * LRU eviction skips `fetch()` entirely (no extra Network rows; avoids cache revalidation work).
+   */
+  private readonly byteCache = new Map<number, Blob>();
   /** LRU order: oldest at front, newest at end */
   private readonly lru: number[] = [];
   private readonly inflight = new Map<number, Promise<ImageBitmap | undefined>>();
@@ -40,9 +63,26 @@ export class FrameBitmapCache {
     reject: (e: Error) => void;
   }> = [];
 
-  constructor(maxEntries = 48, decodeConcurrency?: number) {
+  constructor(
+    maxEntries = 48,
+    decodeConcurrency?: number,
+    useWorkerDecode = false
+  ) {
     this.max = maxEntries;
     this.decodeConcurrency = decodeConcurrency ?? defaultDecodeConcurrency();
+    this.useWorkerDecode = useWorkerDecode;
+    this.retainBlobBytes = !isIOSLike();
+  }
+
+  /** Decode WebP/PNG blob to bitmap; worker path avoids blocking the main thread. */
+  private decodeBitmap(blob: Blob): Promise<ImageBitmap> {
+    const pool = this.useWorkerDecode ? getTerminalDecodePool() : null;
+    if (pool) {
+      return pool.decode(blob).catch(() =>
+        this.withDecodeSlot(() => createImageBitmap(blob))
+      );
+    }
+    return this.withDecodeSlot(() => createImageBitmap(blob));
   }
 
   private enterDecodeSlot(): Promise<void> {
@@ -122,6 +162,43 @@ export class FrameBitmapCache {
     return true;
   }
 
+  private finishDecode(
+    i: number,
+    decodePromise: Promise<ImageBitmap>
+  ): Promise<ImageBitmap | undefined> {
+    return decodePromise
+      .then((bmp) => {
+        this.inflight.delete(i);
+        this.abortControllers.delete(i);
+        if (this.dead) {
+          bmp.close();
+          throw new Error("FrameBitmapCache destroyed");
+        }
+        while (this.lru.length >= this.max) {
+          if (!this.evictOne()) break;
+        }
+        this.map.get(i)?.close();
+        this.map.set(i, bmp);
+        this.bump(i);
+        return bmp;
+      })
+      .catch((err) => {
+        this.inflight.delete(i);
+        this.abortControllers.delete(i);
+        if (this.dead) return undefined;
+        if (err instanceof DOMException && err.name === "AbortError") {
+          return undefined;
+        }
+        if (
+          err instanceof Error &&
+          err.message === "FrameBitmapCache destroyed"
+        ) {
+          return undefined;
+        }
+        throw err;
+      });
+  }
+
   getOrLoad(i: number, url: string): Promise<ImageBitmap | undefined> {
     if (this.dead) return Promise.resolve(undefined);
 
@@ -132,51 +209,34 @@ export class FrameBitmapCache {
     }
 
     let p = this.inflight.get(i);
-    if (!p) {
-      const ac = new AbortController();
-      this.abortControllers.set(i, ac);
+    if (p) return p;
 
-      p = fetch(url, { cache: "force-cache", signal: ac.signal })
-        .then((r) => {
-          if (!r.ok) throw new Error(`Frame fetch ${r.status}`);
-          return r.blob();
-        })
-        .then((blob) => {
-          if (this.dead) throw new Error("FrameBitmapCache destroyed");
-          return this.withDecodeSlot(() => createImageBitmap(blob));
-        })
-        .then((bmp) => {
-          this.inflight.delete(i);
-          this.abortControllers.delete(i);
-          if (this.dead) {
-            bmp.close();
-            throw new Error("FrameBitmapCache destroyed");
-          }
-          while (this.lru.length >= this.max) {
-            if (!this.evictOne()) break;
-          }
-          this.map.get(i)?.close();
-          this.map.set(i, bmp);
-          this.bump(i);
-          return bmp;
-        })
-        .catch((err) => {
-          this.inflight.delete(i);
-          this.abortControllers.delete(i);
-          if (this.dead) return undefined;
-          if (err instanceof DOMException && err.name === "AbortError") {
-            return undefined;
-          }
-          if (
-            err instanceof Error &&
-            err.message === "FrameBitmapCache destroyed"
-          ) {
-            return undefined;
-          }
-          throw err;
-        });
+    const warmBlob = getWarmTerminalBlob(i);
+    const cachedBlob =
+      warmBlob ??
+      (this.retainBlobBytes ? this.byteCache.get(i) : undefined);
+    if (cachedBlob) {
+      p = this.finishDecode(i, this.decodeBitmap(cachedBlob));
       this.inflight.set(i, p);
+      return p;
     }
+
+    const ac = new AbortController();
+    this.abortControllers.set(i, ac);
+
+    const decoded = fetch(url, { cache: "force-cache", signal: ac.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`Frame fetch ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => {
+        if (this.dead) throw new Error("FrameBitmapCache destroyed");
+        if (this.retainBlobBytes) this.byteCache.set(i, blob);
+        return this.decodeBitmap(blob);
+      });
+
+    p = this.finishDecode(i, decoded);
+    this.inflight.set(i, p);
     return p;
   }
 
@@ -207,6 +267,7 @@ export class FrameBitmapCache {
 
   destroy() {
     this.dead = true;
+    if (this.useWorkerDecode) destroyTerminalDecodePool();
     for (const ac of this.abortControllers.values()) ac.abort();
     this.abortControllers.clear();
     for (const w of this.decodeWait) {
@@ -215,6 +276,7 @@ export class FrameBitmapCache {
     this.decodeWait.length = 0;
     for (const bmp of this.map.values()) bmp.close();
     this.map.clear();
+    this.byteCache.clear();
     this.lru.length = 0;
     this.inflight.clear();
     this.pinned.clear();

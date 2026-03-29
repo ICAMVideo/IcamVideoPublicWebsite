@@ -4,6 +4,7 @@ import { drawImageCover, drawImageCoverFocal } from "@/lib/canvasImageCover";
 import { BRAND_BLUE } from "@/lib/brand";
 import { FrameBitmapCache } from "@/lib/frameBitmapCache";
 import { isWebKit, preferNativeScroll } from "@/lib/preferNativeScroll";
+import { hasFullTerminalWarmupForFrames } from "@/lib/terminalFrameBlobWarmup";
 import { frameSrc } from "@/lib/terminalFrameUrl";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -23,21 +24,31 @@ gsap.registerPlugin(ScrollTrigger);
  */
 function scrubSmoothingSeconds(): number {
   if (preferNativeScroll()) return 1.25;
-  if (isWebKit()) return 1.35;
-  return 1.05;
+  if (isWebKit()) return 1.15;
+  /** Lower = progress tracks wheel faster (more frames per gesture). Was ~1.05s; felt “stuck”. */
+  return 0.68;
 }
 
 /**
- * Sticky hero is 100vh; scroll distance through the section ≈ (return − 100)vh.
- * Scales with `frames.length` from `readTerminalManifest()` (e.g. ~335 WebPs).
- * Raise the multiplier if the scrub still feels fast.
+ * Sticky hero is 100vh; scroll distance through the section is this outer height.
+ * Progress 0→1 is spread across it, so **smaller total vh ⇒ more frame steps per
+ * wheel notch** (reference sites often feel like ~3–5 frames per scroll).
  *
- * Scrub draws **fractional blends** on a single canvas from **ImageBitmap** LRU
- * cache (fetch + createImageBitmap). Pairs with Lenis smooth scroll when enabled.
+ * Old `max(600, 120 + n*5.5)` was ~6 vh per frame for large n — very “slow” scrub.
+ * **`HERO_SCROLL_VH_FLOOR` must stay below `BASE + n×PER_FRAME` for your frame count,**
+ * or changing PER_FRAME does nothing (a high floor used to hide small PER_FRAME tweaks).
  */
+const HERO_SCROLL_VH_PER_FRAME = 1.05;
+const HERO_SCROLL_VH_BASE = 56;
+/** Minimum section height (vh); keep low so per-frame multiplier actually applies. */
+const HERO_SCROLL_VH_FLOOR = 96;
+
 function heroSectionHeightVh(frameCount: number): number {
   if (frameCount <= 0) return 100;
-  return Math.max(600, Math.round(120 + frameCount * 5.5));
+  return Math.max(
+    HERO_SCROLL_VH_FLOOR,
+    Math.round(HERO_SCROLL_VH_BASE + frameCount * HERO_SCROLL_VH_PER_FRAME)
+  );
 }
 
 type Props = {
@@ -63,6 +74,16 @@ const PHASE2_LINE2 = "unified on one platform";
 
 const TYPEWRITER_START_FRAME_INDEX = 4;
 const TYPEWRITER_SCROLL = 0.32;
+const TYPEWRITER_PROGRESS_EPS = 0.003;
+const FAST_BLEND_VELOCITY = 0.085;
+
+/** Avoid `gsap.set` per letter every frame (major main-thread cost during scrub). */
+function setHeroLetter(el: HTMLElement, alpha: number, color: string) {
+  const hidden = alpha < 0.002;
+  el.style.visibility = hidden ? "hidden" : "visible";
+  el.style.opacity = hidden ? "0" : String(alpha);
+  el.style.color = color;
+}
 
 function applyTypewriter(
   heroProgress: number,
@@ -74,7 +95,7 @@ function applyTypewriter(
   if (letters.length === 0) return;
   if (reduceMotion) {
     for (const el of letters) {
-      gsap.set(el, { autoAlpha: 1, color: "#ffffff" });
+      setHeroLetter(el, 1, "#ffffff");
     }
     return;
   }
@@ -95,7 +116,7 @@ function applyTypewriter(
   const total = letters.length;
   if (twP <= 0) {
     for (const el of letters) {
-      gsap.set(el, { autoAlpha: 0, color: "#ffffff" });
+      setHeroLetter(el, 0, "#ffffff");
     }
     return;
   }
@@ -107,16 +128,16 @@ function applyTypewriter(
   for (let i = 0; i < total; i++) {
     const el = letters[i];
     if (i < revealed) {
-      gsap.set(el, { autoAlpha: 1, color: "#ffffff" });
+      setHeroLetter(el, 1, "#ffffff");
     } else if (i === revealed && revealed < total) {
       const alpha = gsap.utils.clamp(
         0.06,
         1,
         letterFrac < 0.001 ? 1 : letterFrac * 1.35
       );
-      gsap.set(el, { autoAlpha: alpha, color: ACCENT });
+      setHeroLetter(el, alpha, ACCENT);
     } else {
-      gsap.set(el, { autoAlpha: 0, color: "#ffffff" });
+      setHeroLetter(el, 0, "#ffffff");
     }
   }
 }
@@ -201,7 +222,7 @@ function applyPhase1Typewriter(
   const hi = forwardExact;
   if (hi <= 0.0001 || eaten >= hi - 1e-6) {
     for (const el of letters) {
-      gsap.set(el, { autoAlpha: 0, color: "#ffffff" });
+      setHeroLetter(el, 0, "#ffffff");
     }
     return;
   }
@@ -214,7 +235,7 @@ function applyPhase1Typewriter(
   for (let i = 0; i < total; i++) {
     const el = letters[i];
     if (i < eLo) {
-      gsap.set(el, { autoAlpha: 0, color: "#ffffff" });
+      setHeroLetter(el, 0, "#ffffff");
     } else if (
       i === eLo &&
       eLo === hLo &&
@@ -227,25 +248,25 @@ function applyPhase1Typewriter(
         1,
         (1 - eFr) * hFr * 1.35
       );
-      gsap.set(el, { autoAlpha: alpha, color: ACCENT });
+      setHeroLetter(el, alpha, ACCENT);
     } else if (i === eLo && eFr > 0.001) {
       const alpha = gsap.utils.clamp(
         0.06,
         1,
         (1 - eFr) * 1.35
       );
-      gsap.set(el, { autoAlpha: alpha, color: ACCENT });
+      setHeroLetter(el, alpha, ACCENT);
     } else if (i > eLo && i < hLo) {
-      gsap.set(el, { autoAlpha: 1, color: "#ffffff" });
+      setHeroLetter(el, 1, "#ffffff");
     } else if (i === hLo && hFr > 0.001 && hi < total) {
       const alpha = gsap.utils.clamp(
         0.06,
         1,
         hFr < 0.001 ? 1 : hFr * 1.35
       );
-      gsap.set(el, { autoAlpha: alpha, color: ACCENT });
+      setHeroLetter(el, alpha, ACCENT);
     } else if (i === eLo && eFr <= 0.001 && eLo < hLo) {
-      gsap.set(el, { autoAlpha: 1, color: "#ffffff" });
+      setHeroLetter(el, 1, "#ffffff");
     } else if (
       i === eLo &&
       eFr <= 0.001 &&
@@ -254,9 +275,9 @@ function applyPhase1Typewriter(
       hi < total
     ) {
       const alpha = gsap.utils.clamp(0.06, 1, hFr * 1.35);
-      gsap.set(el, { autoAlpha: alpha, color: ACCENT });
+      setHeroLetter(el, alpha, ACCENT);
     } else {
-      gsap.set(el, { autoAlpha: 0, color: "#ffffff" });
+      setHeroLetter(el, 0, "#ffffff");
     }
   }
 }
@@ -380,9 +401,19 @@ export function ScrollFrameHero({ frames, active }: Props) {
     let scrollDirection = 1;
     let scrollFastForPin = false;
     let prevMode: HeroOverlayMode | undefined;
+    let lastPhase1Progress = -1;
+    let lastPhase2Progress = -1;
 
     const webkit = isWebKit();
-    const cache = new FrameBitmapCache(webkit ? 56 : 72);
+    /** After splash blob warmup, decoding is cheap — keep cross-frame blend + i1 even on fast wheel. */
+    const fullBlobWarm = hasFullTerminalWarmupForFrames(frames);
+    /** Blob inline workers decode off main thread in dev + prod (no Turbopack `URL` worker chunk). */
+    const useWorkerDecode = !webkit;
+    const cache = new FrameBitmapCache(
+      webkit ? 64 : 96,
+      fullBlobWarm ? 14 : undefined,
+      useWorkerDecode
+    );
     let cancelled = false;
 
     const sizeRef = { w: 0, h: 0 };
@@ -401,6 +432,22 @@ export function ScrollFrameHero({ frames, active }: Props) {
      * until we catch up. This makes Safari recover quickly after fast scroll.
      */
     let catchUpRaf: number | null = null;
+
+    /** Skip redundant full canvas clears when scrub target unchanged (cheap vs two cover draws). */
+    let lastDrawSig = "";
+
+    /**
+     * Prefetch + decode completions can fire dozens of promises in one frame — one paint per rAF.
+     */
+    let paintCoalesceRaf: number | null = null;
+    const scheduleTryPaint = () => {
+      if (cancelled) return;
+      if (paintCoalesceRaf != null) return;
+      paintCoalesceRaf = requestAnimationFrame(() => {
+        paintCoalesceRaf = null;
+        if (!cancelled) tryPaint();
+      });
+    };
 
     const scheduleCatchUp = () => {
       if (catchUpRaf != null || cancelled) return;
@@ -483,8 +530,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
         scheduleCatchUp();
       }
 
-      c2d.fillStyle = "#0a0a0a";
-      c2d.fillRect(0, 0, w, h);
+      const drawSig = `${i0}:${i1}:${blend.toFixed(3)}:${rm}:${Boolean(b0)}:${Boolean(b1)}`;
+      if (drawSig === lastDrawSig) return;
+      lastDrawSig = drawSig;
 
       if (!b0) return;
 
@@ -555,10 +603,12 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     const resizeCanvas = () => {
       if (cancelled) return;
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      /** Cap internal pixels — reference sites often run the sequence ~1.25–1.5× CSS size. */
+      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
       const cw = wrap.clientWidth;
       const ch = wrap.clientHeight;
       if (cw < 1 || ch < 1) return;
+      lastDrawSig = "";
       sizeRef.w = cw;
       sizeRef.h = ch;
       canvas.width = Math.round(cw * dpr);
@@ -576,10 +626,10 @@ export function ScrollFrameHero({ frames, active }: Props) {
     const prefetchWindow = (center: number, dir: number, vel: number) => {
       const n = frames.length;
       const native = preferNativeScroll();
-      const baseRadius = native ? 22 : webkit ? 32 : 42;
+      const baseRadius = native ? 28 : webkit ? 40 : 52;
       const fast = vel > 0.06;
-      const ahead = fast ? Math.round(baseRadius * 1.75) : baseRadius;
-      const behind = fast ? Math.round(baseRadius * 0.45) : baseRadius;
+      const ahead = fast ? Math.round(baseRadius * 2) : baseRadius;
+      const behind = fast ? Math.round(baseRadius * 0.5) : baseRadius;
 
       const list: number[] = [];
       const lo = Math.max(0, center - (dir >= 0 ? behind : ahead));
@@ -590,23 +640,18 @@ export function ScrollFrameHero({ frames, active }: Props) {
         (a, b) => Math.abs(a - center) - Math.abs(b - center)
       );
 
-      cache.cancelDistant(center, 110);
-
-      const burstPrefetch = !native && !webkit;
-
-      if (burstPrefetch) {
-        for (const idx of list) {
-          cache.prefetch(idx, frameSrc(frames[idx]), tryPaint);
-        }
-        return;
-      }
+      cache.cancelDistant(center, 160);
 
       let ptr = 0;
       const batch = native ? 10 : 6;
       const pump = () => {
         if (cancelled) return;
         for (let k = 0; k < batch && ptr < list.length; k++, ptr++) {
-          cache.prefetch(list[ptr], frameSrc(frames[list[ptr]]), tryPaint);
+          cache.prefetch(
+            list[ptr],
+            frameSrc(frames[list[ptr]]),
+            scheduleTryPaint
+          );
         }
         if (ptr >= list.length) return;
         requestAnimationFrame(pump);
@@ -643,6 +688,120 @@ export function ScrollFrameHero({ frames, active }: Props) {
       }
     };
 
+    /** Coalesce many ScrollTrigger `onUpdate` ticks into one paint + prefetch per display frame. */
+    let scrubRafId: number | null = null;
+    let pendingProgress = 0;
+
+    const scheduleScrubFrame = () => {
+      if (scrubRafId != null || cancelled) return;
+      scrubRafId = requestAnimationFrame(() => {
+        scrubRafId = null;
+        if (cancelled) return;
+        applyScrollVisuals(pendingProgress);
+      });
+    };
+
+    const applyScrollVisuals = (p: number) => {
+      const now = performance.now();
+      const n = frames.length;
+
+      if (lastProgressTs > 0) {
+        const dt = Math.max(1, now - lastProgressTs);
+        const dp = p - lastProgress;
+        scrollVelocity = (Math.abs(dp) / dt) * 1000;
+        scrollDirection = dp >= 0 ? 1 : -1;
+      }
+      lastProgressTs = now;
+      lastProgress = p;
+      scrollFastForPin = scrollVelocity > 0.06;
+
+      const { modeIdx, i0, i1, blend } = computeScrollBlend(
+        p,
+        n,
+        reduceMotion
+      );
+      paintStateRef.i0 = i0;
+      paintStateRef.i1 = i1;
+      const killBlendForSpeed =
+        !reduceMotion &&
+        (scrollVelocity > FAST_BLEND_VELOCITY ||
+          (!fullBlobWarm && scrollVelocity > 0.12));
+      paintStateRef.blend = killBlendForSpeed ? 0 : blend;
+      paintStateRef.rm = reduceMotion;
+
+      pinAround(i0, i1, n);
+
+      const repaintWhenReady = () => {
+        if (cancelled) return;
+        scheduleTryPaint();
+      };
+
+      void cache
+        .getOrLoad(i0, frameSrc(frames[i0]))
+        .then(repaintWhenReady)
+        .catch(() => {});
+      if (i1 !== i0 && (fullBlobWarm || scrollVelocity <= FAST_BLEND_VELOCITY)) {
+        void cache
+          .getOrLoad(i1, frameSrc(frames[i1]))
+          .then(repaintWhenReady)
+          .catch(() => {});
+      }
+      tryPaint();
+
+      const preloadCenter = Math.round((i0 + i1) / 2);
+      prefetchWindow(preloadCenter, scrollDirection, scrollVelocity);
+
+      const mode = getOverlayMode(modeIdx, eraseEndIdx, phase2StartIdx);
+
+      if (prevMode !== mode) {
+        prevMode = mode;
+        lastPhase1Progress = -1;
+        lastPhase2Progress = -1;
+        applyOverlayMode(mode);
+      }
+
+      if (mode === "phase1" && p1) {
+        if (!letterEls1) {
+          letterEls1 = Array.from(
+            p1.querySelectorAll<HTMLElement>("[data-type-char]")
+          );
+        }
+        if (
+          lastPhase1Progress < 0 ||
+          Math.abs(p - lastPhase1Progress) >= TYPEWRITER_PROGRESS_EPS
+        ) {
+          applyPhase1Typewriter(
+            p,
+            letterEls1,
+            reduceMotion,
+            n,
+            eraseStartIdx,
+            eraseEndIdx
+          );
+          lastPhase1Progress = p;
+        }
+      } else if (mode === "phase2" && p2 && phase2StartIdx >= 0) {
+        if (!letterEls2) {
+          letterEls2 = Array.from(
+            p2.querySelectorAll<HTMLElement>("[data-type-char]")
+          );
+        }
+        if (
+          lastPhase2Progress < 0 ||
+          Math.abs(p - lastPhase2Progress) >= TYPEWRITER_PROGRESS_EPS
+        ) {
+          applyTypewriter(
+            p,
+            letterEls2,
+            reduceMotion,
+            n,
+            phase2StartFrameIndex
+          );
+          lastPhase2Progress = p;
+        }
+      }
+    };
+
     const ctx = gsap.context(() => {
       ScrollTrigger.create({
         trigger: section,
@@ -650,90 +809,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
         end: "bottom bottom",
         scrub: scrubSeconds,
         onUpdate: (self) => {
-          const p = self.progress;
-          const now = performance.now();
-          const n = frames.length;
-
-          if (lastProgressTs > 0) {
-            const dt = Math.max(1, now - lastProgressTs);
-            const dp = p - lastProgress;
-            scrollVelocity = Math.abs(dp) / dt * 1000;
-            scrollDirection = dp >= 0 ? 1 : -1;
-          }
-          lastProgressTs = now;
-          lastProgress = p;
-          scrollFastForPin = scrollVelocity > 0.06;
-
-          const { modeIdx, i0, i1, blend } = computeScrollBlend(
-            p,
-            n,
-            reduceMotion
-          );
-          paintStateRef.i0 = i0;
-          paintStateRef.i1 = i1;
-          paintStateRef.blend = scrollVelocity > 0.12 ? 0 : blend;
-          paintStateRef.rm = reduceMotion;
-
-          pinAround(i0, i1, n);
-
-          const repaintWhenReady = () => {
-            if (cancelled) return;
-            tryPaint();
-            requestAnimationFrame(() => {
-              if (!cancelled) tryPaint();
-            });
-          };
-
-          void cache
-            .getOrLoad(i0, frameSrc(frames[i0]))
-            .then(repaintWhenReady)
-            .catch(() => {});
-          if (i1 !== i0 && scrollVelocity <= 0.12) {
-            void cache
-              .getOrLoad(i1, frameSrc(frames[i1]))
-              .then(repaintWhenReady)
-              .catch(() => {});
-          }
-          tryPaint();
-
-          const preloadCenter = Math.round((i0 + i1) / 2);
-          prefetchWindow(preloadCenter, scrollDirection, scrollVelocity);
-
-          const mode = getOverlayMode(modeIdx, eraseEndIdx, phase2StartIdx);
-
-          if (prevMode !== mode) {
-            prevMode = mode;
-            applyOverlayMode(mode);
-          }
-
-          if (mode === "phase1" && p1) {
-            if (!letterEls1) {
-              letterEls1 = Array.from(
-                p1.querySelectorAll<HTMLElement>("[data-type-char]")
-              );
-            }
-            applyPhase1Typewriter(
-              p,
-              letterEls1,
-              reduceMotion,
-              n,
-              eraseStartIdx,
-              eraseEndIdx
-            );
-          } else if (mode === "phase2" && p2 && phase2StartIdx >= 0) {
-            if (!letterEls2) {
-              letterEls2 = Array.from(
-                p2.querySelectorAll<HTMLElement>("[data-type-char]")
-              );
-            }
-            applyTypewriter(
-              p,
-              letterEls2,
-              reduceMotion,
-              n,
-              phase2StartFrameIndex
-            );
-          }
+          pendingProgress = self.progress;
+          scheduleScrubFrame();
         },
       });
 
@@ -782,14 +859,14 @@ export function ScrollFrameHero({ frames, active }: Props) {
     void cache
       .getOrLoad(0, frameSrc(frames[0]))
       .then(() => {
-        if (!cancelled) tryPaint();
+        if (!cancelled) scheduleTryPaint();
       })
       .catch(() => {});
     if (frames.length > 1) {
       void cache
         .getOrLoad(1, frameSrc(frames[1]))
         .then(() => {
-          if (!cancelled) tryPaint();
+          if (!cancelled) scheduleTryPaint();
         })
         .catch(() => {});
     }
@@ -799,6 +876,14 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     return () => {
       cancelled = true;
+      if (scrubRafId != null) {
+        cancelAnimationFrame(scrubRafId);
+        scrubRafId = null;
+      }
+      if (paintCoalesceRaf != null) {
+        cancelAnimationFrame(paintCoalesceRaf);
+        paintCoalesceRaf = null;
+      }
       if (catchUpRaf != null) cancelAnimationFrame(catchUpRaf);
       ro.disconnect();
       cache.destroy();
