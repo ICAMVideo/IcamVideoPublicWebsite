@@ -168,15 +168,15 @@ export function MarketingSections() {
     <>
       <section
         id="overview"
-        className="scroll-mt-24 border-t border-[color:var(--border)] bg-[color:var(--background)] px-5 py-20 sm:px-8 sm:py-28"
+        className="scroll-mt-24 border-t border-[color:var(--border)] bg-[radial-gradient(circle_at_20%_10%,rgba(9,0,136,0.08),transparent_40%),var(--background)] px-5 py-24 sm:px-8 sm:py-32"
       >
         <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-20 lg:items-start">
           <div>
             <SectionLabel>Overview</SectionLabel>
-            <h1 className="mt-5 text-balance text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl lg:text-[2.65rem] lg:leading-[1.12]">
+            <h1 className="mt-6 text-balance text-3xl font-semibold tracking-tight text-zinc-900 sm:text-[2.55rem] lg:text-[3.1rem] lg:leading-[1.08]">
               Integrated video telematics for commercial fleets
             </h1>
-            <p className="mt-8 max-w-xl text-pretty text-base leading-[1.75] text-zinc-600 sm:text-lg">
+            <p className="mt-8 max-w-2xl text-pretty text-base leading-[1.82] text-zinc-600 sm:text-lg">
               iCAM Video Telematics is a South African technology provider
               specialising in video-enabled fleet telematics and vehicle
               monitoring for commercial operators across transport, mining,
@@ -186,16 +186,16 @@ export function MarketingSections() {
               intelligence—accessible through a unified ecosystem on web and
               mobile devices.
             </p>
-            <p className="mt-6 max-w-xl text-pretty text-base leading-[1.75] text-zinc-600 sm:text-lg">
+            <p className="mt-6 max-w-2xl text-pretty text-base leading-[1.82] text-zinc-600 sm:text-lg">
               The result is not just more data points, but visual evidence and
               context together—reducing ambiguity, improving response times, and
               supporting proactive safety and operational decisions.
             </p>
-            <div className="mt-8 flex flex-wrap gap-2">
+            <div className="mt-9 flex flex-wrap gap-2.5">
               {sectors.map((s) => (
                 <span
                   key={s}
-                  className="inline-flex border border-zinc-200 bg-[color:var(--surface)] px-3 py-1 text-xs font-medium text-zinc-700"
+                  className="inline-flex rounded-full bg-white/85 px-3.5 py-1.5 text-xs font-medium text-zinc-700 shadow-[0_1px_8px_-6px_rgba(15,23,42,0.5)]"
                 >
                   {s}
                 </span>
@@ -204,13 +204,13 @@ export function MarketingSections() {
             <div className="mt-10 flex flex-wrap gap-3">
               <a
                 href="#services"
-                className="inline-flex items-center justify-center border border-zinc-900/15 bg-[color:var(--surface)] px-5 py-2.5 text-sm font-semibold text-zinc-900 shadow-sm transition hover:border-zinc-900/25 hover:bg-[color:var(--surface-elevated)]"
+                className="inline-flex items-center justify-center rounded-full bg-[color:var(--accent)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-14px_rgba(9,0,136,0.75)] transition hover:bg-[color:var(--accent-bright)]"
               >
                 Core products & systems
               </a>
               <a
                 href="#contact"
-                className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-zinc-700 underline decoration-zinc-300 underline-offset-4 transition hover:text-zinc-900 hover:decoration-zinc-500"
+                className="inline-flex items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-white hover:text-zinc-900"
               >
                 Request a conversation
               </a>
@@ -221,7 +221,7 @@ export function MarketingSections() {
             {pillars.map((p) => (
               <div
                 key={p.label}
-                className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-[0_1px_0_rgba(15,20,25,0.04)]"
+                className="rounded-2xl bg-white/90 p-6 shadow-[0_16px_34px_-24px_rgba(15,23,42,0.55)] backdrop-blur-[2px]"
               >
                 <p className="text-sm font-semibold text-zinc-900">{p.label}</p>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-600">
@@ -241,7 +241,7 @@ export function MarketingSections() {
         <div className="mx-auto max-w-6xl">
           <div className="max-w-3xl">
             <SectionLabel>Core products & systems</SectionLabel>
-            <h2 className="mt-5 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+            <h2 className="mt-5 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-[2.5rem]">
               Operational capabilities across vehicle types
             </h2>
             <p className="mt-5 text-base leading-[1.75] text-zinc-600 sm:text-lg">
@@ -258,7 +258,7 @@ export function MarketingSections() {
       <section className="border-t border-[color:var(--border)] bg-[color:var(--background)] px-5 py-14 sm:px-8 sm:py-16">
         <div className="mx-auto max-w-6xl">
           <SectionLabel>Trusted by clients</SectionLabel>
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-[2.15rem]">
             Continuous deployments across transport, security, and heavy industry
           </h2>
           <div className="mt-8 overflow-hidden py-4">
@@ -277,7 +277,7 @@ export function MarketingSections() {
       </section>
 
       <section
-        className="border-t border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-5 py-20 sm:px-8 sm:py-24"
+        className="border-t border-[color:var(--border)] bg-[linear-gradient(180deg,var(--surface-elevated),#f5f4f1)] px-5 py-20 sm:px-8 sm:py-24"
         aria-labelledby="ops-heading"
       >
         <div className="mx-auto max-w-6xl">
@@ -292,7 +292,7 @@ export function MarketingSections() {
             {operationsBands.map((band, i) => (
               <article
                 key={band.title}
-                className={`grid gap-6 rounded-2xl border border-zinc-200 p-6 sm:p-8 lg:grid-cols-2 lg:gap-10 ${
+                className={`grid gap-6 rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(15,23,42,0.45)] sm:p-8 lg:grid-cols-2 lg:gap-10 ${
                   i % 2 === 0 ? "bg-white" : "bg-zinc-950 text-zinc-100"
                 }`}
               >
@@ -341,14 +341,14 @@ export function MarketingSections() {
         </div>
       </section>
 
-      <section className="border-t border-zinc-800 bg-zinc-950 px-5 py-16 text-zinc-100 sm:px-8 sm:py-20">
+      <section className="border-t border-zinc-800 bg-[radial-gradient(circle_at_80%_20%,rgba(113,113,255,0.16),transparent_40%),#09090b] px-5 py-16 text-zinc-100 sm:px-8 sm:py-20">
         <div className="mx-auto max-w-6xl">
           <SectionLabel>Proof points</SectionLabel>
           <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {proofCards.map((card) => (
               <article
                 key={card.label}
-                className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5"
+                className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_12px_28px_-22px_rgba(159,159,255,0.65)] backdrop-blur-sm"
               >
                 <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
                   {card.label}
@@ -381,7 +381,7 @@ export function MarketingSections() {
           </p>
           <a
             href="mailto:hello@icamvideo.com"
-            className="mt-10 inline-flex items-center justify-center bg-[color:var(--accent)] px-10 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[color:var(--accent-bright)]"
+            className="mt-10 inline-flex items-center justify-center rounded-full bg-[color:var(--accent)] px-10 py-3.5 text-sm font-semibold text-white shadow-[0_12px_28px_-18px_rgba(9,0,136,0.8)] transition hover:bg-[color:var(--accent-bright)]"
           >
             hello@icamvideo.com
           </a>
