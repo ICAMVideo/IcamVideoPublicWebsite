@@ -1,10 +1,15 @@
 /**
+ * Site-wide Lenis toggle. Set `false` to use native browser scroll everywhere
+ * (SmoothScroll skips Lenis; ScrollFrameHero uses native scrub/prefetch tuning).
+ */
+export const LENIS_ENABLED = false;
+
+/**
  * Whether the current browser should skip Lenis and use native scroll instead.
- * Now only true on iOS (touch-only), where Lenis + ticker fights the OS momentum.
- * **Desktop Safari now uses Lenis** — with canvas-based scrubbing there's no reason
- * to exclude it, and native scroll gave choppy ScrollTrigger updates.
+ * True when `LENIS_ENABLED` is off, on iOS (Lenis + ticker fights OS momentum), etc.
  */
 export function preferNativeScroll(): boolean {
+  if (!LENIS_ENABLED) return true;
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
   const iOS =
@@ -21,4 +26,10 @@ export function isWebKit(): boolean {
     /Safari/i.test(ua) &&
     !/Chrome|Chromium|CriOS|FxiOS|Edg|OPR|Brave/i.test(ua)
   );
+}
+
+/** Windows desktop + tablet (Chromium/Edge/Firefox); used for decode/prefetch tuning. */
+export function isWindows(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /Windows/i.test(navigator.userAgent);
 }

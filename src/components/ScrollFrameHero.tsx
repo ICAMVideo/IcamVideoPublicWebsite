@@ -3,7 +3,12 @@
 import { drawImageCover, drawImageCoverFocal } from "@/lib/canvasImageCover";
 import { BRAND_BLUE } from "@/lib/brand";
 import { FrameBitmapCache } from "@/lib/frameBitmapCache";
-import { isWebKit, preferNativeScroll } from "@/lib/preferNativeScroll";
+import {
+  isWebKit,
+  isWindows,
+  LENIS_ENABLED,
+  preferNativeScroll,
+} from "@/lib/preferNativeScroll";
 import { hasFullTerminalWarmupForFrames } from "@/lib/terminalFrameBlobWarmup";
 import { frameSrc } from "@/lib/terminalFrameUrl";
 import { gsap } from "gsap";
@@ -23,9 +28,20 @@ gsap.registerPlugin(ScrollTrigger);
  * @see https://github.com/darkroomengineering/lenis/blob/main/README.md (GSAP section)
  */
 function scrubSmoothingSeconds(): number {
+  if (!LENIS_ENABLED) {
+    if (isWebKit()) {
+      /** Safari: main-thread decode — ease ScrollTrigger progress to reduce index churn. */
+      return 1.88;
+    }
+    if (isWindows()) {
+      /** Many Windows GPUs/drivers struggle with canvas + many ImageBitmaps; ease the timeline. */
+      return 1.14;
+    }
+    /** Native scroll on Mac/Linux Chromium — keep progress responsive. */
+    return 0.72;
+  }
   if (preferNativeScroll()) return 1.25;
   if (isWebKit()) return 1.15;
-  /** Lower = progress tracks wheel faster (more frames per gesture). Was ~1.05s; felt “stuck”. */
   return 0.68;
 }
 
@@ -405,13 +421,20 @@ export function ScrollFrameHero({ frames, active }: Props) {
     let lastPhase2Progress = -1;
 
     const webkit = isWebKit();
+    const windows = isWindows();
     /** After splash blob warmup, decoding is cheap — keep cross-frame blend + i1 even on fast wheel. */
     const fullBlobWarm = hasFullTerminalWarmupForFrames(frames);
     /** Blob inline workers decode off main thread in dev + prod (no Turbopack `URL` worker chunk). */
     const useWorkerDecode = !webkit;
+    /** Never raise WebKit decode slots to 14 — `createImageBitmap` runs on the main thread there. */
+    const decodeConcurrencyOverride = fullBlobWarm
+      ? webkit
+        ? 1
+        : 14
+      : undefined;
     const cache = new FrameBitmapCache(
       webkit ? 64 : 96,
-      fullBlobWarm ? 14 : undefined,
+      decodeConcurrencyOverride,
       useWorkerDecode
     );
     let cancelled = false;
@@ -603,8 +626,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     const resizeCanvas = () => {
       if (cancelled) return;
-      /** Cap internal pixels — reference sites often run the sequence ~1.25–1.5× CSS size. */
-      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      /** Safari: keep backing store small — canvas + ImageBitmap compositing is costly in WebKit. */
+      const dprCap = webkit ? 1.1 : windows ? 1.25 : 1.5;
+      const dpr = Math.min(dprCap, window.devicePixelRatio || 1);
       const cw = wrap.clientWidth;
       const ch = wrap.clientHeight;
       if (cw < 1 || ch < 1) return;
@@ -626,7 +650,13 @@ export function ScrollFrameHero({ frames, active }: Props) {
     const prefetchWindow = (center: number, dir: number, vel: number) => {
       const n = frames.length;
       const native = preferNativeScroll();
-      const baseRadius = native ? 28 : webkit ? 40 : 52;
+      const baseRadius = native
+        ? webkit
+          ? 16
+          : 28
+        : webkit
+          ? 40
+          : 52;
       const fast = vel > 0.06;
       const ahead = fast ? Math.round(baseRadius * 2) : baseRadius;
       const behind = fast ? Math.round(baseRadius * 0.5) : baseRadius;
@@ -640,10 +670,17 @@ export function ScrollFrameHero({ frames, active }: Props) {
         (a, b) => Math.abs(a - center) - Math.abs(b - center)
       );
 
-      cache.cancelDistant(center, 160);
+      cache.cancelDistant(center, webkit ? 130 : 160);
 
       let ptr = 0;
-      const batch = native ? 10 : 6;
+      /** Fewer decode starts per frame on WebKit (main-thread) and Windows (GPU/memory). */
+      const batch = !native
+        ? 6
+        : webkit
+          ? 2
+          : windows
+            ? 5
+            : 10;
       const pump = () => {
         if (cancelled) return;
         for (let k = 0; k < batch && ptr < list.length; k++, ptr++) {
@@ -722,10 +759,12 @@ export function ScrollFrameHero({ frames, active }: Props) {
       );
       paintStateRef.i0 = i0;
       paintStateRef.i1 = i1;
+      const safariBlendCut = 0.042;
+      const blendVelocityCut = webkit ? safariBlendCut : FAST_BLEND_VELOCITY;
       const killBlendForSpeed =
         !reduceMotion &&
-        (scrollVelocity > FAST_BLEND_VELOCITY ||
-          (!fullBlobWarm && scrollVelocity > 0.12));
+        (scrollVelocity > blendVelocityCut ||
+          (!fullBlobWarm && scrollVelocity > (webkit ? 0.07 : 0.12)));
       paintStateRef.blend = killBlendForSpeed ? 0 : blend;
       paintStateRef.rm = reduceMotion;
 
@@ -740,7 +779,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
         .getOrLoad(i0, frameSrc(frames[i0]))
         .then(repaintWhenReady)
         .catch(() => {});
-      if (i1 !== i0 && (fullBlobWarm || scrollVelocity <= FAST_BLEND_VELOCITY)) {
+      const loadBlendNeighbor =
+        fullBlobWarm || scrollVelocity <= (webkit ? safariBlendCut : FAST_BLEND_VELOCITY);
+      if (i1 !== i0 && loadBlendNeighbor) {
         void cache
           .getOrLoad(i1, frameSrc(frames[i1]))
           .then(repaintWhenReady)
@@ -760,6 +801,11 @@ export function ScrollFrameHero({ frames, active }: Props) {
         applyOverlayMode(mode);
       }
 
+      /** Do not touch dozens of letter nodes while scrubbing fast — main-thread DOM + style cost. */
+      const skipOverlayText =
+        !reduceMotion && scrollVelocity > (webkit ? 0.055 : 0.1);
+      const twEps = skipOverlayText ? 0.04 : TYPEWRITER_PROGRESS_EPS;
+
       if (mode === "phase1" && p1) {
         if (!letterEls1) {
           letterEls1 = Array.from(
@@ -767,8 +813,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
           );
         }
         if (
-          lastPhase1Progress < 0 ||
-          Math.abs(p - lastPhase1Progress) >= TYPEWRITER_PROGRESS_EPS
+          !skipOverlayText &&
+          (lastPhase1Progress < 0 ||
+            Math.abs(p - lastPhase1Progress) >= twEps)
         ) {
           applyPhase1Typewriter(
             p,
@@ -787,8 +834,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
           );
         }
         if (
-          lastPhase2Progress < 0 ||
-          Math.abs(p - lastPhase2Progress) >= TYPEWRITER_PROGRESS_EPS
+          !skipOverlayText &&
+          (lastPhase2Progress < 0 ||
+            Math.abs(p - lastPhase2Progress) >= twEps)
         ) {
           applyTypewriter(
             p,

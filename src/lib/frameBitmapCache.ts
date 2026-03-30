@@ -30,9 +30,12 @@ function defaultDecodeConcurrency(): number {
     /Safari/i.test(ua) &&
     !/Chrome|Chromium|CriOS|Edg|OPR|Brave/i.test(ua)
   ) {
-    return 2;
+    /** One decode at a time — WebKit runs `createImageBitmap` on the main thread. */
+    return 1;
   }
-  /** Chrome/Edge/Firefox: higher parallelism hides disk-cache + decode latency when scrubbing fast. */
+  /** Windows: fewer parallel bitmaps to reduce memory pressure + main-thread transfer bursts. */
+  if (/Windows/i.test(ua)) return 5;
+  /** Chrome/Edge/Firefox (non-Windows): higher parallelism hides disk-cache + decode latency. */
   return 8;
 }
 
