@@ -1,6 +1,6 @@
 /**
  * Site-wide Lenis toggle. Set `false` to use native browser scroll everywhere
- * (SmoothScroll skips Lenis; ScrollFrameHero uses native scrub/prefetch tuning).
+ * (SmoothScroll skips Lenis; video hero uses native browser scrolling).
  */
 export const LENIS_ENABLED = false;
 

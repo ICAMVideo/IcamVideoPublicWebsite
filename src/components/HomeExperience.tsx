@@ -1,48 +1,23 @@
 "use client";
 
-import { warmTerminalFrameBlobs } from "@/lib/terminalFrameBlobWarmup";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { MarketingSections } from "./MarketingSections";
-import { ScrollFrameHero } from "./ScrollFrameHero";
+import { ScrollVideoHero } from "./ScrollVideoHero";
 import { SiteNav } from "./SiteNav";
 import { SplashScreen } from "./SplashScreen";
-
-type Props = {
-  frames: string[];
-};
 
 function scrollTopHard() {
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 }
 
-export function HomeExperience({ frames }: Props) {
+export function HomeExperience() {
   const [splashDone, setSplashDone] = useState(false);
-  const [blobWarmReady, setBlobWarmReady] = useState(false);
-  const framesKey = frames.join("|");
+  const [heroReady, setHeroReady] = useState(false);
 
-  useEffect(() => {
-    if (frames.length === 0) {
-      setBlobWarmReady(true);
-      return;
-    }
-
-    let cancelled = false;
-    setBlobWarmReady(false);
-
-    void warmTerminalFrameBlobs(frames).then(() => {
-      if (!cancelled) setBlobWarmReady(true);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [framesKey, frames]);
+  const onVideoReady = useCallback(() => {
+    setHeroReady(true);
+  }, []);
 
   useLayoutEffect(() => {
     const prev = window.history.scrollRestoration;
@@ -54,7 +29,7 @@ export function HomeExperience({ frames }: Props) {
   }, []);
 
   const handleSplashComplete = useCallback(() => {
-    if (!blobWarmReady) return;
+    if (!heroReady) return;
     scrollTopHard();
     setSplashDone(true);
     requestAnimationFrame(() => {
@@ -62,21 +37,16 @@ export function HomeExperience({ frames }: Props) {
       ScrollTrigger.refresh();
       scrollTopHard();
     });
-  }, [blobWarmReady]);
+  }, [heroReady]);
 
   return (
     <main className="flex min-h-dvh flex-col bg-[color:var(--background)] text-zinc-900">
-      {/* Fixed under splash (z-100); reveals with hero as doors split — not after splash unmount */}
       <SiteNav />
-      <ScrollFrameHero
-        key={framesKey}
-        frames={frames}
-        active={frames.length > 0}
-      />
+      <ScrollVideoHero onVideoReady={onVideoReady} />
       {!splashDone ? (
         <SplashScreen
           onComplete={handleSplashComplete}
-          waitForReady={blobWarmReady}
+          waitForReady={heroReady}
         />
       ) : null}
       <MarketingSections />
