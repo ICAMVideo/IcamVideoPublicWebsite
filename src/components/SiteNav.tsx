@@ -52,6 +52,11 @@ const platformItems: FlyoutItem[] = [
 
 const solutionsItems: FlyoutItem[] = [
   {
+    href: "/solutions",
+    title: "All solutions",
+    description: "Vehicle categories and deployment-specific solution sets",
+  },
+  {
     href: "/#overview",
     title: "Fleet operators",
     description: "Regional and mixed fleets with clear day-to-day workflows",

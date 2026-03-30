@@ -26,6 +26,7 @@ const VIDEO_SRC_MOBILE = "/terminal/output-mobile.mp4";
 const MOBILE_VIDEO_MQ = "(max-width: 1023px)";
 
 const VIDEO_START_S = 4;
+const VIDEO_PREWARM_MS = 900;
 
 const SCRUB_SMOOTH_S = 1.2;
 const TIME_LERP = 0.11;
@@ -88,6 +89,7 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
     let targetTime = 0;
     let videoRafId = 0;
     let cancelled = false;
+    let prewarmTimerId: number | null = null;
 
     const tickVideo = () => {
       if (cancelled) return;
@@ -150,6 +152,12 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
     }
 
     let readyFired = false;
+    const fireReadyOnce = () => {
+      if (readyFired) return;
+      readyFired = true;
+      onReadyRef.current?.();
+    };
+
     const onMeta = () => {
       const d = video.duration;
       const start = Number.isFinite(d)
@@ -162,15 +170,31 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
       if (iosScrubWorkaround) {
         video.muted = true;
         void video.play().catch(() => {});
+        fireReadyOnce();
       } else {
-        video.pause();
+        // Prime decoder/network while splash is visible, then reset.
+        const done = () => {
+          if (cancelled) return;
+          video.pause();
+          video.currentTime = start;
+          targetTime = start;
+          applyScrollVisuals(pendingProgress);
+          fireReadyOnce();
+        };
+
+        void video
+          .play()
+          .then(() => {
+            if (cancelled) return;
+            prewarmTimerId = window.setTimeout(done, VIDEO_PREWARM_MS);
+          })
+          .catch(() => {
+            // If autoplay prewarm is blocked, still proceed.
+            done();
+          });
       }
 
       ScrollTrigger.refresh();
-      if (!readyFired) {
-        readyFired = true;
-        onReadyRef.current?.();
-      }
     };
 
     if (video.readyState >= 1) {
@@ -180,10 +204,7 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
       video.addEventListener(
         "error",
         () => {
-          if (!readyFired) {
-            readyFired = true;
-            onReadyRef.current?.();
-          }
+          fireReadyOnce();
         },
         { once: true }
       );
@@ -194,6 +215,7 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
 
     return () => {
       cancelled = true;
+      if (prewarmTimerId != null) window.clearTimeout(prewarmTimerId);
       cancelAnimationFrame(videoRafId);
       if (scrubRafId != null) cancelAnimationFrame(scrubRafId);
       video.pause();
