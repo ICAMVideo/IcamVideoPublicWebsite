@@ -1,3 +1,4 @@
+import { isOperaGX } from "@/lib/preferNativeScroll";
 import {
   destroyTerminalDecodePool,
   getTerminalDecodePool,
@@ -33,6 +34,8 @@ function defaultDecodeConcurrency(): number {
     /** One decode at a time — WebKit runs `createImageBitmap` on the main thread. */
     return 1;
   }
+  /** Opera GX: lighter concurrency — browser + GX layers often contend with canvas. */
+  if (isOperaGX()) return 6;
   /** Windows: workers + cache slots; 8 matches terminal decode pool throughput. */
   if (/Windows/i.test(ua)) return 8;
   /** Chrome/Edge/Firefox (non-Windows): higher parallelism hides disk-cache + decode latency. */

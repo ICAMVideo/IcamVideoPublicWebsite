@@ -33,3 +33,18 @@ export function isWindows(): boolean {
   if (typeof navigator === "undefined") return false;
   return /Windows/i.test(navigator.userAgent);
 }
+
+/**
+ * Opera GX (Chromium-based). Uses `OPR/` token; GX builds include "Edition GX" / "GX" in UA.
+ * Tuned separately — often heavier than stock Chrome on the same machine.
+ */
+export function isOperaGX(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  if (!/OPR\//i.test(ua)) return false;
+  return (
+    /Edition\s*GX|Opera\s*GX|OperaGX/i.test(ua) ||
+    /\(Edition GX\)/i.test(ua) ||
+    /\bGX\b/i.test(ua)
+  );
+}

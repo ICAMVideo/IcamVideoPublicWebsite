@@ -4,6 +4,7 @@ import { drawImageCover, drawImageCoverFocal } from "@/lib/canvasImageCover";
 import { BRAND_BLUE } from "@/lib/brand";
 import { FrameBitmapCache } from "@/lib/frameBitmapCache";
 import {
+  isOperaGX,
   isWebKit,
   isWindows,
   LENIS_ENABLED,
@@ -41,6 +42,10 @@ function scrubSmoothingSeconds(): number {
     if (isWebKit()) {
       /** Safari: main-thread decode — ease ScrollTrigger progress to reduce index churn. */
       return 1.96;
+    }
+    if (isOperaGX()) {
+      /** Opera GX: extra scrub smoothing — GX + browser chrome contends with canvas on many systems. */
+      return 1.52;
     }
     if (isWindows()) {
       /** Windows Chrome/Edge: ease scrub vs canvas + compositing (still worker-decoded). */
@@ -444,10 +449,14 @@ export function ScrollFrameHero({ frames, active }: Props) {
     const wrap = canvasWrapRef.current;
     if (!canvas || !wrap) return;
 
-    // `desynchronized` targets Chrome’s low-latency path; WebKit can show glitches or missed paints.
+    const webkit = isWebKit();
+    const windows = isWindows();
+    const operaGx = isOperaGX();
+
+    // `desynchronized` helps stock Chrome; WebKit + Opera GX often paint more reliably without it.
     const c2d = canvas.getContext("2d", {
       alpha: false,
-      ...(isWebKit() ? {} : { desynchronized: true }),
+      ...(webkit || operaGx ? {} : { desynchronized: true }),
     });
     if (!c2d) return;
 
@@ -469,14 +478,13 @@ export function ScrollFrameHero({ frames, active }: Props) {
     let lastProgressTs = 0;
     let lastProgress = 0;
     let scrollVelocity = 0;
+    let scrollVelocityEma = 0;
     let scrollDirection = 1;
     let scrollFastForPin = false;
     let prevMode: HeroOverlayMode | undefined;
     let lastPhase1Progress = -1;
     let lastPhase2Progress = -1;
 
-    const webkit = isWebKit();
-    const windows = isWindows();
     /** WebKit: only every Nth frame is drawn/decoded; overlay phases still use full `modeIdx`. */
     const frameStride = webkit ? WEBKIT_FRAME_STRIDE : 1;
     /** After splash blob warmup, decoding is cheap — keep cross-frame blend + i1 even on fast wheel. */
@@ -487,7 +495,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
     const decodeConcurrencyOverride = fullBlobWarm
       ? webkit
         ? 1
-        : 14
+        : operaGx
+          ? 10
+          : 14
       : undefined;
     /** Large enough to retain the full sequence once decoded (was 64/96 — evictions caused freezes on hard scroll). */
     const bitmapCacheSize = Math.min(frames.length, BITMAP_CACHE_MAX);
@@ -529,7 +539,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
           eagerDecodeRafId = null;
           return;
         }
-        const batch = webkit ? 2 : windows ? 10 : 12;
+        const batch = webkit ? 2 : operaGx ? 6 : windows ? 10 : 12;
         const queueDecode = (j: number) => {
           void cache
             .getOrLoad(j, frameSrc(frames[j]))
@@ -756,8 +766,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     const resizeCanvas = () => {
       if (cancelled) return;
-      /** Safari / Windows: cheaper backing store; Mac Chrome can afford 1.5×. */
-      const dprCap = webkit ? 1.05 : windows ? 1.1 : 1.5;
+      /** Safari / Opera GX / Windows: cheaper backing store; stock Mac Chrome can afford 1.5×. */
+      const dprCap = webkit ? 1.05 : operaGx ? 1.08 : windows ? 1.1 : 1.5;
       const dpr = Math.min(dprCap, window.devicePixelRatio || 1);
       const cw = wrap.clientWidth;
       const ch = wrap.clientHeight;
@@ -783,9 +793,11 @@ export function ScrollFrameHero({ frames, active }: Props) {
       const baseRadius = native
         ? webkit
           ? 22
-          : windows
-            ? 20
-            : 28
+          : operaGx
+            ? 18
+            : windows
+              ? 20
+              : 28
         : webkit
           ? 40
           : 52;
@@ -820,9 +832,11 @@ export function ScrollFrameHero({ frames, active }: Props) {
         ? 6
         : webkit
           ? 2
-          : windows
-            ? 8
-            : 10;
+          : operaGx
+            ? 6
+            : windows
+              ? 8
+              : 10;
       const pump = () => {
         if (cancelled) return;
         for (let k = 0; k < batch && ptr < list.length; k++, ptr++) {
@@ -889,6 +903,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
         const dt = Math.max(1, now - lastProgressTs);
         const dp = p - lastProgress;
         scrollVelocity = (Math.abs(dp) / dt) * 1000;
+        /** Mouse wheels emit sharp velocity spikes; trackpads are smoother. EMA avoids killing cross-fade on every wheel notch. */
+        scrollVelocityEma =
+          0.34 * scrollVelocity + 0.66 * scrollVelocityEma;
         scrollDirection = dp >= 0 ? 1 : -1;
       }
       lastProgressTs = now;
@@ -905,16 +922,20 @@ export function ScrollFrameHero({ frames, active }: Props) {
       paintStateRef.i1 = i1;
       const safariBlendCut = 0.042;
       const winBlendCut = 0.055;
+      const operaGxBlendCut = 0.058;
       const blendVelocityCut = webkit
         ? safariBlendCut
-        : windows
-          ? winBlendCut
-          : FAST_BLEND_VELOCITY;
+        : operaGx
+          ? operaGxBlendCut
+          : windows
+            ? winBlendCut
+            : FAST_BLEND_VELOCITY;
       const killBlendForSpeed =
         !reduceMotion &&
-        (scrollVelocity > blendVelocityCut ||
+        (scrollVelocityEma > blendVelocityCut ||
           (!fullBlobWarm &&
-            scrollVelocity > (webkit ? 0.07 : windows ? 0.09 : 0.12)));
+            scrollVelocityEma >
+              (webkit ? 0.07 : operaGx ? 0.092 : windows ? 0.09 : 0.12)));
       paintStateRef.blend = killBlendForSpeed ? 0 : blend;
       paintStateRef.rm = reduceMotion;
 
@@ -931,8 +952,14 @@ export function ScrollFrameHero({ frames, active }: Props) {
         .catch(() => {});
       const loadBlendNeighbor =
         fullBlobWarm ||
-        scrollVelocity <=
-          (webkit ? safariBlendCut : windows ? winBlendCut : FAST_BLEND_VELOCITY);
+        scrollVelocityEma <=
+          (webkit
+            ? safariBlendCut
+            : operaGx
+              ? operaGxBlendCut
+              : windows
+                ? winBlendCut
+                : FAST_BLEND_VELOCITY);
       if (i1 !== i0 && loadBlendNeighbor) {
         void cache
           .getOrLoad(i1, frameSrc(frames[i1]))

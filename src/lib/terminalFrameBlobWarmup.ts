@@ -1,3 +1,4 @@
+import { isWebKit } from "@/lib/preferNativeScroll";
 import { frameSrc } from "@/lib/terminalFrameUrl";
 
 function isIOSLike(): boolean {
@@ -48,18 +49,40 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Splash may dismiss before this many frames exist; deep scroll can still fetch until
- * background warm finishes (same as reference sites: no network *once* fully warm).
+ * Splash waits until this many **leading** frames are fetched (or timeout). WebKit stays
+ * conservative; Chromium loads a longer prefix during the splash so the hero is hotter on reveal.
  */
-const SPLASH_PREFIX_LEN = 40;
+const SPLASH_PREFIX_LEN_WEBKIT = 40;
+const SPLASH_PREFIX_LEN_CHROMIUM = 96;
 
-/** Never block the hero longer than this while waiting on `SPLASH_PREFIX_LEN`. */
-const SPLASH_MAX_WAIT_MS = 6_500;
+/** Never block the hero longer than this while waiting on the prefix (Chromium can wait a bit longer). */
+const SPLASH_MAX_WAIT_MS_WEBKIT = 6_500;
+const SPLASH_MAX_WAIT_MS_CHROMIUM = 9_000;
 
 const MAX_MAIN_PASSES = 12;
-const WARM_WORKER_POOL = 4;
-const WARM_BATCH_SIZE = 8;
-const WARM_BATCH_DELAY_MS = 50;
+
+function splashPrefixTarget(): number {
+  if (typeof navigator === "undefined") return SPLASH_PREFIX_LEN_WEBKIT;
+  return isWebKit() ? SPLASH_PREFIX_LEN_WEBKIT : SPLASH_PREFIX_LEN_CHROMIUM;
+}
+
+function splashMaxWaitMs(): number {
+  if (typeof navigator === "undefined") return SPLASH_MAX_WAIT_MS_WEBKIT;
+  return isWebKit() ? SPLASH_MAX_WAIT_MS_WEBKIT : SPLASH_MAX_WAIT_MS_CHROMIUM;
+}
+
+function warmWorkerPoolSize(): number {
+  if (typeof navigator === "undefined") return 4;
+  return isWebKit() ? 4 : 7;
+}
+
+function warmBatchSize(): number {
+  return isWebKit() ? 8 : 12;
+}
+
+function warmBatchDelayMs(): number {
+  return isWebKit() ? 50 : 26;
+}
 
 function warmMainThreadRange(
   frames: string[],
@@ -70,7 +93,11 @@ function warmMainThreadRange(
   const span = rangeEnd - rangeStart;
   if (span <= 0) return Promise.resolve();
 
-  const concurrency = isIOSLike() ? 4 : 18;
+  const concurrency = isIOSLike()
+    ? 4
+    : isWebKit()
+      ? 4
+      : 24;
   let next = rangeStart;
   const take = () => {
     if (gen !== warmGeneration) return -1;
@@ -131,8 +158,10 @@ async function tryWarmWithWorkersRange(
     return false;
   }
 
-  const pool = Math.min(WARM_WORKER_POOL, Math.max(1, limit - rangeStart));
+  const pool = Math.min(warmWorkerPoolSize(), Math.max(1, limit - rangeStart));
   let nextIndex = rangeStart;
+  const batchSize = warmBatchSize();
+  const batchDelay = warmBatchDelayMs();
 
   const runOneWorker = (w: Worker) =>
     new Promise<void>((resolveWorker) => {
@@ -143,7 +172,7 @@ async function tryWarmWithWorkersRange(
           return;
         }
         const items: Array<{ i: number; url: string }> = [];
-        while (items.length < WARM_BATCH_SIZE && nextIndex < limit) {
+        while (items.length < batchSize && nextIndex < limit) {
           const i = nextIndex++;
           if (warmBlobs.has(i)) continue;
           items.push({ i, url: frameSrc(frames[i]) });
@@ -164,12 +193,12 @@ async function tryWarmWithWorkersRange(
               }
             }
           }
-          setTimeout(step, WARM_BATCH_DELAY_MS);
+          setTimeout(step, batchDelay);
         };
         const onErr = () => {
           w.removeEventListener("message", onMsg);
           w.removeEventListener("error", onErr);
-          setTimeout(step, WARM_BATCH_DELAY_MS);
+          setTimeout(step, batchDelay);
         };
         w.addEventListener("message", onMsg);
         w.addEventListener("error", onErr);
@@ -240,7 +269,7 @@ async function waitUntilSplashReady(
 /**
  * **Hybrid (matches how fast reference sites *feel*)**: start loading the **entire**
  * sequence immediately in the background (workers + main). The splash only waits until
- * the **first `SPLASH_PREFIX_LEN` frames** exist or **`SPLASH_MAX_WAIT_MS`** — whichever
+ * the **first N** frames exist (`splashPrefixTarget()`, larger on Chromium) or **`splashMaxWaitMs()`** — whichever
  * comes first — so you are not blocked for minutes. After that, scrubbing uses warm
  * blobs where available; the rest fill in quietly until `hasFullTerminalWarmupForFrames`.
  */
@@ -250,7 +279,7 @@ export function warmTerminalFrameBlobs(frames: string[]): Promise<void> {
 
   clearTerminalBlobWarmup();
   const gen = warmGeneration;
-  const prefix = Math.min(SPLASH_PREFIX_LEN, limit);
+  const prefix = Math.min(splashPrefixTarget(), limit);
 
   return (async () => {
     if (gen !== warmGeneration) return;
@@ -259,7 +288,7 @@ export function warmTerminalFrameBlobs(frames: string[]): Promise<void> {
 
     await Promise.race([
       waitUntilSplashReady(gen, prefix),
-      sleep(SPLASH_MAX_WAIT_MS),
+      sleep(splashMaxWaitMs()),
     ]);
   })();
 }
