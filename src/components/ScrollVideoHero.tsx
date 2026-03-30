@@ -216,7 +216,7 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
           <div className="absolute inset-0 z-[1] flex items-center justify-center [transform:translateZ(0)]">
             <video
               ref={videoRef}
-              className="h-auto max-h-dvh w-full object-contain [backface-visibility:hidden]"
+              className="h-full w-full object-cover lg:h-auto lg:max-h-dvh lg:object-contain [backface-visibility:hidden]"
               src={videoSrc}
               width={mobileAsset ? 720 : 1280}
               height={mobileAsset ? 406 : 720}
