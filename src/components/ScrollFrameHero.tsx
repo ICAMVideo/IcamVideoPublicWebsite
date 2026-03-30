@@ -17,6 +17,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const CURSOR_OFFSET = 14;
 
+/** Max decoded frames kept in RAM; avoids LRU evict → re-decode during fast scrub (see idle decode sweep). */
+const BITMAP_CACHE_MAX = 1200;
+
 gsap.registerPlugin(ScrollTrigger);
 
 /**
@@ -93,6 +96,16 @@ const TYPEWRITER_SCROLL = 0.32;
 const TYPEWRITER_PROGRESS_EPS = 0.003;
 const FAST_BLEND_VELOCITY = 0.085;
 
+/** Matches `computeScrollBlend`: scroll progress `p` maps to frame index `t = p * (n-1)`. */
+function scrollProgressDenominator(n: number): number {
+  return n > 1 ? n - 1 : 1;
+}
+
+function frameIndexToScrollProgress(frameIndex: number, n: number): number {
+  if (n <= 1) return 0;
+  return frameIndex / scrollProgressDenominator(n);
+}
+
 /** Avoid `gsap.set` per letter every frame (major main-thread cost during scrub). */
 function setHeroLetter(el: HTMLElement, alpha: number, color: string) {
   const hidden = alpha < 0.002;
@@ -118,7 +131,7 @@ function applyTypewriter(
 
   const n = Math.max(1, videoFrameCount);
   const startP =
-    n > startFrameIndex ? startFrameIndex / n : 0;
+    n > startFrameIndex ? frameIndexToScrollProgress(startFrameIndex, n) : 0;
   const twEnd = Math.min(1, startP + TYPEWRITER_SCROLL);
   const twP =
     heroProgress < startP
@@ -203,7 +216,7 @@ function applyPhase1Typewriter(
   const total = letters.length;
   const startP =
     n > TYPEWRITER_START_FRAME_INDEX
-      ? TYPEWRITER_START_FRAME_INDEX / n
+      ? frameIndexToScrollProgress(TYPEWRITER_START_FRAME_INDEX, n)
       : 0;
   const twEnd = Math.min(1, startP + TYPEWRITER_SCROLL);
   const twP =
@@ -220,8 +233,8 @@ function applyPhase1Typewriter(
     forwardExact = total;
   }
 
-  const pEraseStart = eraseStartIdx / n;
-  const pEraseEnd = eraseEndIdx / n;
+  const pEraseStart = frameIndexToScrollProgress(eraseStartIdx, n);
+  const pEraseEnd = frameIndexToScrollProgress(eraseEndIdx, n);
 
   let eaten = 0;
   if (heroProgress >= pEraseStart && pEraseStart < pEraseEnd) {
@@ -325,7 +338,10 @@ function computeScrollBlend(
 ): { modeIdx: number; i0: number; i1: number; blend: number } {
   if (n <= 0) return { modeIdx: 0, i0: 0, i1: 0, blend: 0 };
   if (reduceMotion) {
-    const k = Math.min(n - 1, Math.max(0, Math.floor(p * n)));
+    const k = Math.min(
+      n - 1,
+      Math.max(0, Math.floor(p * scrollProgressDenominator(n)))
+    );
     return { modeIdx: k, i0: k, i1: k, blend: 0 };
   }
   if (n === 1) return { modeIdx: 0, i0: 0, i1: 0, blend: 0 };
@@ -432,12 +448,78 @@ export function ScrollFrameHero({ frames, active }: Props) {
         ? 1
         : 14
       : undefined;
+    /** Large enough to retain the full sequence once decoded (was 64/96 — evictions caused freezes on hard scroll). */
+    const bitmapCacheSize = Math.min(frames.length, BITMAP_CACHE_MAX);
     const cache = new FrameBitmapCache(
-      webkit ? 64 : 96,
+      bitmapCacheSize,
       decodeConcurrencyOverride,
       useWorkerDecode
     );
     let cancelled = false;
+
+    let warmPollId: number | null = null;
+    let idleDecodeChainId: number | null = null;
+    let idleDecodeSweepStarted = false;
+
+    const cancelIdleDecodeChain = () => {
+      if (idleDecodeChainId == null) return;
+      if (typeof cancelIdleCallback !== "undefined") {
+        cancelIdleCallback(idleDecodeChainId);
+      } else {
+        clearTimeout(idleDecodeChainId);
+      }
+      idleDecodeChainId = null;
+    };
+
+    const runIdleDecodeSweep = () => {
+      if (idleDecodeSweepStarted || cancelled) return;
+      idleDecodeSweepStarted = true;
+      let cursor = 0;
+      const step = () => {
+        if (cancelled) {
+          cancelIdleDecodeChain();
+          return;
+        }
+        if (cursor >= frames.length) {
+          cancelIdleDecodeChain();
+          return;
+        }
+        const batch = webkit ? 1 : 4;
+        const end = Math.min(cursor + batch, frames.length);
+        for (let j = cursor; j < end; j++) {
+          void cache
+            .getOrLoad(j, frameSrc(frames[j]))
+            .then(() => {
+              if (!cancelled) scheduleTryPaint();
+            })
+            .catch(() => {});
+        }
+        cursor = end;
+        if (typeof requestIdleCallback !== "undefined") {
+          idleDecodeChainId = requestIdleCallback(step, { timeout: 900 });
+        } else {
+          idleDecodeChainId = window.setTimeout(step, 0);
+        }
+      };
+      if (typeof requestIdleCallback !== "undefined") {
+        idleDecodeChainId = requestIdleCallback(step, { timeout: 1500 });
+      } else {
+        idleDecodeChainId = window.setTimeout(step, 0);
+      }
+    };
+
+    const tryStartIdleDecodeWhenWarm = () => {
+      if (cancelled || idleDecodeSweepStarted) return;
+      if (!hasFullTerminalWarmupForFrames(frames)) return;
+      if (warmPollId != null) {
+        clearInterval(warmPollId);
+        warmPollId = null;
+      }
+      runIdleDecodeSweep();
+    };
+
+    tryStartIdleDecodeWhenWarm();
+    warmPollId = window.setInterval(() => tryStartIdleDecodeWhenWarm(), 400) as unknown as number;
 
     const sizeRef = { w: 0, h: 0 };
     const paintStateRef = {
@@ -801,11 +883,6 @@ export function ScrollFrameHero({ frames, active }: Props) {
         applyOverlayMode(mode);
       }
 
-      /** Do not touch dozens of letter nodes while scrubbing fast — main-thread DOM + style cost. */
-      const skipOverlayText =
-        !reduceMotion && scrollVelocity > (webkit ? 0.055 : 0.1);
-      const twEps = skipOverlayText ? 0.04 : TYPEWRITER_PROGRESS_EPS;
-
       if (mode === "phase1" && p1) {
         if (!letterEls1) {
           letterEls1 = Array.from(
@@ -813,9 +890,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
           );
         }
         if (
-          !skipOverlayText &&
-          (lastPhase1Progress < 0 ||
-            Math.abs(p - lastPhase1Progress) >= twEps)
+          lastPhase1Progress < 0 ||
+          Math.abs(p - lastPhase1Progress) >= TYPEWRITER_PROGRESS_EPS
         ) {
           applyPhase1Typewriter(
             p,
@@ -834,9 +910,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
           );
         }
         if (
-          !skipOverlayText &&
-          (lastPhase2Progress < 0 ||
-            Math.abs(p - lastPhase2Progress) >= twEps)
+          lastPhase2Progress < 0 ||
+          Math.abs(p - lastPhase2Progress) >= TYPEWRITER_PROGRESS_EPS
         ) {
           applyTypewriter(
             p,
@@ -924,6 +999,11 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     return () => {
       cancelled = true;
+      if (warmPollId != null) {
+        clearInterval(warmPollId);
+        warmPollId = null;
+      }
+      cancelIdleDecodeChain();
       if (scrubRafId != null) {
         cancelAnimationFrame(scrubRafId);
         scrubRafId = null;
