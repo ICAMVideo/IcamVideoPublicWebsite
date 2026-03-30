@@ -20,6 +20,12 @@ const CURSOR_OFFSET = 14;
 /** Max decoded frames kept in RAM; avoids LRU evict → re-decode during fast scrub (see eager decode sweep). */
 const BITMAP_CACHE_MAX = 1200;
 
+/**
+ * Safari only: use every Nth source frame for the canvas (decode + draw).
+ * Halves main-thread decode work; overlay timing still uses full `modeIdx` from scroll progress.
+ */
+const WEBKIT_FRAME_STRIDE = 2;
+
 gsap.registerPlugin(ScrollTrigger);
 
 /**
@@ -334,30 +340,52 @@ function getOverlayMode(
 function computeScrollBlend(
   p: number,
   n: number,
-  reduceMotion: boolean
+  reduceMotion: boolean,
+  stride: number = 1
 ): { modeIdx: number; i0: number; i1: number; blend: number } {
   if (n <= 0) return { modeIdx: 0, i0: 0, i1: 0, blend: 0 };
+  const t = p * (n - 1);
+  const modeIdx = Math.min(n - 1, Math.max(0, Math.round(t)));
+
   if (reduceMotion) {
-    const k = Math.min(
-      n - 1,
-      Math.max(0, Math.floor(p * scrollProgressDenominator(n)))
-    );
-    return { modeIdx: k, i0: k, i1: k, blend: 0 };
+    const raw = Math.floor(p * scrollProgressDenominator(n));
+    const k =
+      stride <= 1
+        ? Math.min(n - 1, Math.max(0, raw))
+        : Math.min(n - 1, Math.max(0, Math.floor(raw / stride) * stride));
+    return { modeIdx, i0: k, i1: k, blend: 0 };
   }
   if (n === 1) return { modeIdx: 0, i0: 0, i1: 0, blend: 0 };
-  const t = p * (n - 1);
-  const i0 = Math.min(n - 1, Math.max(0, Math.floor(t)));
-  const i1 = Math.min(n - 1, i0 + 1);
-  const blend = t - i0;
-  const modeIdx = Math.min(n - 1, Math.max(0, Math.round(t)));
+
+  if (stride <= 1) {
+    const i0 = Math.min(n - 1, Math.max(0, Math.floor(t)));
+    const i1 = Math.min(n - 1, i0 + 1);
+    const blend = t - i0;
+    return { modeIdx, i0, i1, blend };
+  }
+
+  const i0 = Math.min(n - 1, Math.max(0, Math.floor(t / stride) * stride));
+  let i1 = Math.min(n - 1, i0 + stride);
+  if (i1 <= i0) i1 = Math.min(n - 1, i0 + 1);
+  const blend = (t - i0) / Math.max(1e-6, i1 - i0);
   return { modeIdx, i0, i1, blend };
 }
 
-/** Decode order for background warm: closest indices to scroll position first (not always 0→n). */
-function buildFrameDecodeOrder(frameCount: number, centerIndex: number): number[] {
+/** Decode order for background warm: closest indices first. With stride>1, only those indices (fewer decodes on Safari). */
+function buildFrameDecodeOrder(
+  frameCount: number,
+  centerIndex: number,
+  stride: number
+): number[] {
   if (frameCount <= 0) return [];
   const c = Math.max(0, Math.min(frameCount - 1, Math.round(centerIndex)));
-  const out = Array.from({ length: frameCount }, (_, i) => i);
+  const out =
+    stride <= 1
+      ? Array.from({ length: frameCount }, (_, i) => i)
+      : Array.from({ length: frameCount }, (_, i) => i).filter(
+          (i) => i % stride === 0
+        );
+  if (out.length === 0) return [0];
   out.sort((a, b) => Math.abs(a - c) - Math.abs(b - c));
   return out;
 }
@@ -449,6 +477,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     const webkit = isWebKit();
     const windows = isWindows();
+    /** WebKit: only every Nth frame is drawn/decoded; overlay phases still use full `modeIdx`. */
+    const frameStride = webkit ? WEBKIT_FRAME_STRIDE : 1;
     /** After splash blob warmup, decoding is cheap — keep cross-frame blend + i1 even on fast wheel. */
     const fullBlobWarm = hasFullTerminalWarmupForFrames(frames);
     /** Blob inline workers decode off main thread in dev + prod (no Turbopack `URL` worker chunk). */
@@ -488,7 +518,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
       eagerDecodeSweepStarted = true;
       const len = frames.length;
       const center = scrollProgressRef.current * Math.max(0, len - 1);
-      const decodeOrder = buildFrameDecodeOrder(len, center);
+      const decodeOrder = buildFrameDecodeOrder(len, center, frameStride);
       let cursor = 0;
       const tick = () => {
         if (cancelled) {
@@ -512,7 +542,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
           const { i0, i1 } = computeScrollBlend(
             scrollProgressRef.current,
             len,
-            reduceMotion
+            reduceMotion,
+            frameStride
           );
           queueDecode(i0);
           if (i1 !== i0) queueDecode(i1);
@@ -765,7 +796,17 @@ export function ScrollFrameHero({ frames, active }: Props) {
       const list: number[] = [];
       const lo = Math.max(0, center - (dir >= 0 ? behind : ahead));
       const hi = Math.min(n - 1, center + (dir >= 0 ? ahead : behind));
-      for (let idx = lo; idx <= hi; idx++) list.push(idx);
+      for (let idx = lo; idx <= hi; idx++) {
+        if (frameStride > 1 && idx % frameStride !== 0) continue;
+        list.push(idx);
+      }
+      if (list.length === 0 && frameStride > 1 && n > 0) {
+        const snap = Math.min(
+          n - 1,
+          Math.max(0, Math.floor(center / frameStride) * frameStride)
+        );
+        list.push(snap);
+      }
 
       list.sort(
         (a, b) => Math.abs(a - center) - Math.abs(b - center)
@@ -857,7 +898,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
       const { modeIdx, i0, i1, blend } = computeScrollBlend(
         p,
         n,
-        reduceMotion
+        reduceMotion,
+        frameStride
       );
       paintStateRef.i0 = i0;
       paintStateRef.i1 = i1;
@@ -1001,21 +1043,21 @@ export function ScrollFrameHero({ frames, active }: Props) {
       if (hints.length > 0) gsap.set(hints, { clearProps: "autoAlpha" });
     }, section);
 
-    const init = computeScrollBlend(0, frames.length, reduceMotion);
+    const init = computeScrollBlend(0, frames.length, reduceMotion, frameStride);
     paintStateRef.i0 = init.i0;
     paintStateRef.i1 = init.i1;
     paintStateRef.blend = init.blend;
     paintStateRef.rm = reduceMotion;
     prefetchWindow(0, 1, 0);
     void cache
-      .getOrLoad(0, frameSrc(frames[0]))
+      .getOrLoad(init.i0, frameSrc(frames[init.i0]))
       .then(() => {
         if (!cancelled) scheduleTryPaint();
       })
       .catch(() => {});
-    if (frames.length > 1) {
+    if (init.i1 !== init.i0) {
       void cache
-        .getOrLoad(1, frameSrc(frames[1]))
+        .getOrLoad(init.i1, frameSrc(frames[init.i1]))
         .then(() => {
           if (!cancelled) scheduleTryPaint();
         })
