@@ -1,4 +1,5 @@
 import { BrandLogo } from "@/components/BrandLogo";
+import { ScrollLinkedServicesCarousel } from "@/components/ScrollLinkedServicesCarousel";
 
 const sectors = [
   "Transport",
@@ -132,22 +133,6 @@ function SectionLabel({ children }: { children: string }) {
   );
 }
 
-function BulletList({ items }: { items: readonly string[] }) {
-  return (
-    <ul className="mt-5 space-y-3 text-sm leading-relaxed text-zinc-600">
-      {items.map((item) => (
-        <li key={item} className="flex gap-3">
-          <span
-            className="mt-2 h-1 w-1 shrink-0 rounded-full bg-zinc-400"
-            aria-hidden
-          />
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function PlaceholderVisual({ title }: { title: string }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-zinc-300/80 bg-gradient-to-br from-zinc-100 via-zinc-50 to-white p-5">
@@ -254,31 +239,7 @@ export function MarketingSections() {
             </p>
           </div>
 
-          <div className="mt-12 overflow-x-auto pb-2 [scrollbar-width:thin]">
-            <div className="flex snap-x snap-mandatory gap-5">
-              {productSections.map((block, i) => (
-                <article
-                  key={block.id}
-                  id={block.id}
-                  className="min-w-[86%] snap-start rounded-2xl border border-zinc-200 bg-white p-6 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.45)] sm:min-w-[70%] lg:min-w-[46%]"
-                >
-                  <p className="text-xs font-semibold tabular-nums text-zinc-400">
-                    {String(i + 1).padStart(2, "0")}
-                  </p>
-                  <h3 className="mt-2 text-xl font-semibold tracking-tight text-zinc-900">
-                    {block.title}
-                  </h3>
-                  <p className="mt-4 text-sm leading-[1.7] text-zinc-600">
-                    {block.intro}
-                  </p>
-                  <BulletList items={block.bullets} />
-                  <div className="mt-6">
-                    <PlaceholderVisual title={`${block.title} visual placeholder`} />
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
+          <ScrollLinkedServicesCarousel items={productSections} />
         </div>
       </section>
 
