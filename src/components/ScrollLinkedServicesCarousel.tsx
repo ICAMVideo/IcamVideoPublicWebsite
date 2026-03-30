@@ -57,30 +57,33 @@ export function ScrollLinkedServicesCarousel({ items }: { items: readonly Servic
     if (!section || !pin || !track) return;
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) return;
+    if (reduceMotion) {
+      gsap.set(track, { x: 0 });
+      return;
+    }
 
     const ctx = gsap.context(() => {
-      const build = () => {
-        const maxX = Math.max(0, track.scrollWidth - pin.clientWidth);
-        gsap.set(track, { x: 0 });
-        if (maxX <= 0) return;
+      const maxX = Math.max(0, track.scrollWidth - pin.clientWidth);
+      gsap.set(track, { x: 0 });
+      if (maxX <= 0) return;
 
-        ScrollTrigger.create({
+      gsap.to(track, {
+        x: () => -Math.max(0, track.scrollWidth - pin.clientWidth),
+        ease: "none",
+        scrollTrigger: {
           trigger: section,
           start: "top top+=72",
-          end: () => `+=${maxX + 160}`,
+          end: () =>
+            `+=${
+              Math.max(0, track.scrollWidth - pin.clientWidth) +
+              pin.clientHeight * 0.55
+            }`,
           scrub: 1.1,
           pin,
           anticipatePin: 1,
           invalidateOnRefresh: true,
-          onUpdate: (self) => {
-            gsap.set(track, { x: -maxX * self.progress });
-          },
-        });
-      };
-
-      build();
-      ScrollTrigger.addEventListener("refreshInit", build);
+        },
+      });
     }, section);
 
     ScrollTrigger.refresh();
