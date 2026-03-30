@@ -2,13 +2,13 @@
 
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const HERO_SCROLL_VH_PER_FRAME = 1.7;
-const HERO_SCROLL_VH_BASE = 56;
-const HERO_SCROLL_VH_FLOOR = 96;
+const HERO_SCROLL_VH_PER_FRAME = 2.35;
+const HERO_SCROLL_VH_BASE = 64;
+const HERO_SCROLL_VH_FLOOR = 112;
 const FALLBACK_SECTION_VH = 320;
 
 function sectionHeightVh(frameCount: number): number {
@@ -19,7 +19,12 @@ function sectionHeightVh(frameCount: number): number {
   );
 }
 
-const VIDEO_SRC = "/terminal/output.mp4";
+const VIDEO_SRC_DESKTOP = "/terminal/output.mp4";
+const VIDEO_SRC_MOBILE = "/terminal/output-mobile.mp4";
+
+/** Tailwind `lg` (1024px): match nav / typical desktop layout. */
+const MOBILE_VIDEO_MQ = "(max-width: 1023px)";
+
 const VIDEO_START_S = 4;
 
 const SCRUB_SMOOTH_S = 1.2;
@@ -46,8 +51,21 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
+  const [videoSrc, setVideoSrc] = useState(VIDEO_SRC_DESKTOP);
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_VIDEO_MQ);
+    const apply = () =>
+      setVideoSrc(mq.matches ? VIDEO_SRC_MOBILE : VIDEO_SRC_DESKTOP);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
   const timingN = 600;
   const sectionVh = sectionHeightVh(timingN);
+
+  const mobileAsset = videoSrc === VIDEO_SRC_MOBILE;
 
   useLayoutEffect(() => {
     if (!sectionRef.current) return;
@@ -181,7 +199,7 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
       video.pause();
       ctx.revert();
     };
-  }, [timingN]);
+  }, [timingN, videoSrc]);
 
   return (
     <section
@@ -199,9 +217,9 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
             <video
               ref={videoRef}
               className="h-auto max-h-dvh w-full object-contain [backface-visibility:hidden]"
-              src={VIDEO_SRC}
-              width={1280}
-              height={720}
+              src={videoSrc}
+              width={mobileAsset ? 720 : 1280}
+              height={mobileAsset ? 406 : 720}
               preload="auto"
               muted
               playsInline

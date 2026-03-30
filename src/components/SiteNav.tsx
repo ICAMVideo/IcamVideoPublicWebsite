@@ -297,7 +297,7 @@ export function SiteNav() {
               </Link>
               <button
                 type="button"
-                className="flex h-10 w-10 items-center justify-center border border-zinc-600 text-zinc-200 transition-colors hover:border-zinc-500 hover:bg-white/5 lg:hidden"
+                className="flex h-10 w-10 items-center justify-center text-zinc-200 transition-colors hover:bg-white/5 lg:hidden"
                 aria-expanded={mobileOpen}
                 aria-controls="mobile-menu"
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -378,7 +378,7 @@ export function SiteNav() {
                 </Link>
                 <button
                   type="button"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center border border-zinc-600 text-zinc-200 transition-colors hover:bg-white/5"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center text-zinc-200 transition-colors hover:bg-white/5"
                   aria-label="Close menu"
                   onClick={closeMobile}
                 >
