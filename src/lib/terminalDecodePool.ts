@@ -15,7 +15,8 @@ self.onmessage = async (e) => {
 };
 `.trim();
 
-const POOL_SIZE = 5;
+/** Enough workers for Windows + high decode concurrency without queue stalls. */
+const POOL_SIZE = 8;
 
 type Job = {
   blob: Blob;

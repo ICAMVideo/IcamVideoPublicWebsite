@@ -33,8 +33,8 @@ function defaultDecodeConcurrency(): number {
     /** One decode at a time — WebKit runs `createImageBitmap` on the main thread. */
     return 1;
   }
-  /** Windows: fewer parallel bitmaps to reduce memory pressure + main-thread transfer bursts. */
-  if (/Windows/i.test(ua)) return 5;
+  /** Windows: workers + cache slots; 8 matches terminal decode pool throughput. */
+  if (/Windows/i.test(ua)) return 8;
   /** Chrome/Edge/Firefox (non-Windows): higher parallelism hides disk-cache + decode latency. */
   return 8;
 }

@@ -17,7 +17,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const CURSOR_OFFSET = 14;
 
-/** Max decoded frames kept in RAM; avoids LRU evict → re-decode during fast scrub (see idle decode sweep). */
+/** Max decoded frames kept in RAM; avoids LRU evict → re-decode during fast scrub (see eager decode sweep). */
 const BITMAP_CACHE_MAX = 1200;
 
 gsap.registerPlugin(ScrollTrigger);
@@ -34,11 +34,11 @@ function scrubSmoothingSeconds(): number {
   if (!LENIS_ENABLED) {
     if (isWebKit()) {
       /** Safari: main-thread decode — ease ScrollTrigger progress to reduce index churn. */
-      return 1.88;
+      return 1.96;
     }
     if (isWindows()) {
-      /** Many Windows GPUs/drivers struggle with canvas + many ImageBitmaps; ease the timeline. */
-      return 1.14;
+      /** Windows Chrome/Edge: ease scrub vs canvas + compositing (still worker-decoded). */
+      return 1.46;
     }
     /** Native scroll on Mac/Linux Chromium — keep progress responsive. */
     return 0.72;
@@ -353,6 +353,15 @@ function computeScrollBlend(
   return { modeIdx, i0, i1, blend };
 }
 
+/** Decode order for background warm: closest indices to scroll position first (not always 0→n). */
+function buildFrameDecodeOrder(frameCount: number, centerIndex: number): number[] {
+  if (frameCount <= 0) return [];
+  const c = Math.max(0, Math.min(frameCount - 1, Math.round(centerIndex)));
+  const out = Array.from({ length: frameCount }, (_, i) => i);
+  out.sort((a, b) => Math.abs(a - c) - Math.abs(b - c));
+  return out;
+}
+
 export function ScrollFrameHero({ frames, active }: Props) {
   const sectionRef = useRef<HTMLElement | null>(null);
   const phase1Ref = useRef<HTMLDivElement | null>(null);
@@ -360,6 +369,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
   const followerRef = useRef<HTMLDivElement | null>(null);
   const canvasWrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  /** Latest scrub progress; eager decode + WebKit prioritise frames near here. */
+  const scrollProgressRef = useRef(0);
   const posRef = useRef({ x: 0, y: 0 });
   const rafRef = useRef<number | null>(null);
   const [finePointer, setFinePointer] = useState(false);
@@ -458,68 +469,74 @@ export function ScrollFrameHero({ frames, active }: Props) {
     let cancelled = false;
 
     let warmPollId: number | null = null;
-    let idleDecodeChainId: number | null = null;
-    let idleDecodeSweepStarted = false;
+    let eagerDecodeRafId: number | null = null;
+    let eagerDecodeSweepStarted = false;
 
-    const cancelIdleDecodeChain = () => {
-      if (idleDecodeChainId == null) return;
-      if (typeof cancelIdleCallback !== "undefined") {
-        cancelIdleCallback(idleDecodeChainId);
-      } else {
-        clearTimeout(idleDecodeChainId);
-      }
-      idleDecodeChainId = null;
+    const cancelEagerDecodeRaf = () => {
+      if (eagerDecodeRafId == null) return;
+      cancelAnimationFrame(eagerDecodeRafId);
+      eagerDecodeRafId = null;
     };
 
-    const runIdleDecodeSweep = () => {
-      if (idleDecodeSweepStarted || cancelled) return;
-      idleDecodeSweepStarted = true;
+    /**
+     * After blobs are warm, decode via rAF. Order is **closest to current scroll first** (not
+     * always 0→n). On WebKit, each tick also **prefers the current scrub pair (i0,i1)** so fast
+     * scroll wins decode slots before the rest of the spiral.
+     */
+    const runEagerDecodeSweep = () => {
+      if (eagerDecodeSweepStarted || cancelled) return;
+      eagerDecodeSweepStarted = true;
+      const len = frames.length;
+      const center = scrollProgressRef.current * Math.max(0, len - 1);
+      const decodeOrder = buildFrameDecodeOrder(len, center);
       let cursor = 0;
-      const step = () => {
+      const tick = () => {
         if (cancelled) {
-          cancelIdleDecodeChain();
+          cancelEagerDecodeRaf();
           return;
         }
-        if (cursor >= frames.length) {
-          cancelIdleDecodeChain();
+        if (cursor >= decodeOrder.length) {
+          eagerDecodeRafId = null;
           return;
         }
-        const batch = webkit ? 1 : 4;
-        const end = Math.min(cursor + batch, frames.length);
-        for (let j = cursor; j < end; j++) {
+        const batch = webkit ? 2 : windows ? 10 : 12;
+        const queueDecode = (j: number) => {
           void cache
             .getOrLoad(j, frameSrc(frames[j]))
             .then(() => {
               if (!cancelled) scheduleTryPaint();
             })
             .catch(() => {});
+        };
+        if (webkit) {
+          const { i0, i1 } = computeScrollBlend(
+            scrollProgressRef.current,
+            len,
+            reduceMotion
+          );
+          queueDecode(i0);
+          if (i1 !== i0) queueDecode(i1);
         }
-        cursor = end;
-        if (typeof requestIdleCallback !== "undefined") {
-          idleDecodeChainId = requestIdleCallback(step, { timeout: 900 });
-        } else {
-          idleDecodeChainId = window.setTimeout(step, 0);
+        for (let k = 0; k < batch && cursor < decodeOrder.length; k++) {
+          queueDecode(decodeOrder[cursor++]);
         }
+        eagerDecodeRafId = requestAnimationFrame(tick);
       };
-      if (typeof requestIdleCallback !== "undefined") {
-        idleDecodeChainId = requestIdleCallback(step, { timeout: 1500 });
-      } else {
-        idleDecodeChainId = window.setTimeout(step, 0);
-      }
+      eagerDecodeRafId = requestAnimationFrame(tick);
     };
 
-    const tryStartIdleDecodeWhenWarm = () => {
-      if (cancelled || idleDecodeSweepStarted) return;
+    const tryStartEagerDecodeWhenWarm = () => {
+      if (cancelled || eagerDecodeSweepStarted) return;
       if (!hasFullTerminalWarmupForFrames(frames)) return;
       if (warmPollId != null) {
         clearInterval(warmPollId);
         warmPollId = null;
       }
-      runIdleDecodeSweep();
+      runEagerDecodeSweep();
     };
 
-    tryStartIdleDecodeWhenWarm();
-    warmPollId = window.setInterval(() => tryStartIdleDecodeWhenWarm(), 400) as unknown as number;
+    tryStartEagerDecodeWhenWarm();
+    warmPollId = window.setInterval(() => tryStartEagerDecodeWhenWarm(), 400) as unknown as number;
 
     const sizeRef = { w: 0, h: 0 };
     const paintStateRef = {
@@ -708,8 +725,8 @@ export function ScrollFrameHero({ frames, active }: Props) {
 
     const resizeCanvas = () => {
       if (cancelled) return;
-      /** Safari: keep backing store small — canvas + ImageBitmap compositing is costly in WebKit. */
-      const dprCap = webkit ? 1.1 : windows ? 1.25 : 1.5;
+      /** Safari / Windows: cheaper backing store; Mac Chrome can afford 1.5×. */
+      const dprCap = webkit ? 1.05 : windows ? 1.1 : 1.5;
       const dpr = Math.min(dprCap, window.devicePixelRatio || 1);
       const cw = wrap.clientWidth;
       const ch = wrap.clientHeight;
@@ -734,8 +751,10 @@ export function ScrollFrameHero({ frames, active }: Props) {
       const native = preferNativeScroll();
       const baseRadius = native
         ? webkit
-          ? 16
-          : 28
+          ? 22
+          : windows
+            ? 20
+            : 28
         : webkit
           ? 40
           : 52;
@@ -761,7 +780,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
         : webkit
           ? 2
           : windows
-            ? 5
+            ? 8
             : 10;
       const pump = () => {
         if (cancelled) return;
@@ -821,6 +840,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
     };
 
     const applyScrollVisuals = (p: number) => {
+      scrollProgressRef.current = p;
       const now = performance.now();
       const n = frames.length;
 
@@ -842,11 +862,17 @@ export function ScrollFrameHero({ frames, active }: Props) {
       paintStateRef.i0 = i0;
       paintStateRef.i1 = i1;
       const safariBlendCut = 0.042;
-      const blendVelocityCut = webkit ? safariBlendCut : FAST_BLEND_VELOCITY;
+      const winBlendCut = 0.055;
+      const blendVelocityCut = webkit
+        ? safariBlendCut
+        : windows
+          ? winBlendCut
+          : FAST_BLEND_VELOCITY;
       const killBlendForSpeed =
         !reduceMotion &&
         (scrollVelocity > blendVelocityCut ||
-          (!fullBlobWarm && scrollVelocity > (webkit ? 0.07 : 0.12)));
+          (!fullBlobWarm &&
+            scrollVelocity > (webkit ? 0.07 : windows ? 0.09 : 0.12)));
       paintStateRef.blend = killBlendForSpeed ? 0 : blend;
       paintStateRef.rm = reduceMotion;
 
@@ -862,7 +888,9 @@ export function ScrollFrameHero({ frames, active }: Props) {
         .then(repaintWhenReady)
         .catch(() => {});
       const loadBlendNeighbor =
-        fullBlobWarm || scrollVelocity <= (webkit ? safariBlendCut : FAST_BLEND_VELOCITY);
+        fullBlobWarm ||
+        scrollVelocity <=
+          (webkit ? safariBlendCut : windows ? winBlendCut : FAST_BLEND_VELOCITY);
       if (i1 !== i0 && loadBlendNeighbor) {
         void cache
           .getOrLoad(i1, frameSrc(frames[i1]))
@@ -1003,7 +1031,7 @@ export function ScrollFrameHero({ frames, active }: Props) {
         clearInterval(warmPollId);
         warmPollId = null;
       }
-      cancelIdleDecodeChain();
+      cancelEagerDecodeRaf();
       if (scrubRafId != null) {
         cancelAnimationFrame(scrubRafId);
         scrubRafId = null;
