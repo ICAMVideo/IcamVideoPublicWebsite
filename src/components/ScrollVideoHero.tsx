@@ -25,6 +25,16 @@ const VIDEO_START_S = 4;
 const SCRUB_SMOOTH_S = 1.2;
 const TIME_LERP = 0.11;
 
+/** iOS WebKit often won't composite video frames while paused + seeking; muted play() fixes scrub previews. */
+function prefersIOSInlineScrubWorkaround(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  if (/iPad|iPhone|iPod/i.test(ua)) return true;
+  return (
+    navigator.platform === "MacIntel" && typeof navigator.maxTouchPoints === "number" && navigator.maxTouchPoints > 1
+  );
+}
+
 type Props = {
   onVideoReady?: () => void;
 };
@@ -45,6 +55,13 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
     const section = sectionRef.current;
     const video = videoRef.current;
     if (!video) return;
+
+    const iosScrubWorkaround = prefersIOSInlineScrubWorkaround();
+    video.defaultMuted = true;
+    video.muted = true;
+    video.setAttribute("playsinline", "");
+    video.setAttribute("webkit-playsinline", "");
+    video.load();
 
     const reduceMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
@@ -116,7 +133,6 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
 
     let readyFired = false;
     const onMeta = () => {
-      video.pause();
       const d = video.duration;
       const start = Number.isFinite(d)
         ? Math.min(VIDEO_START_S, Math.max(0, d - 0.05))
@@ -124,6 +140,14 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
       video.currentTime = start;
       targetTime = start;
       applyScrollVisuals(pendingProgress);
+
+      if (iosScrubWorkaround) {
+        video.muted = true;
+        void video.play().catch(() => {});
+      } else {
+        video.pause();
+      }
+
       ScrollTrigger.refresh();
       if (!readyFired) {
         readyFired = true;
@@ -154,6 +178,7 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
       cancelled = true;
       cancelAnimationFrame(videoRafId);
       if (scrubRafId != null) cancelAnimationFrame(scrubRafId);
+      video.pause();
       ctx.revert();
     };
   }, [timingN]);
@@ -173,8 +198,10 @@ export function ScrollVideoHero({ onVideoReady }: Props) {
           <div className="absolute inset-0 z-[1] flex items-center justify-center [transform:translateZ(0)]">
             <video
               ref={videoRef}
-              className="max-h-dvh w-full object-contain [backface-visibility:hidden]"
+              className="h-auto max-h-dvh w-full object-contain [backface-visibility:hidden]"
               src={VIDEO_SRC}
+              width={1280}
+              height={720}
               preload="auto"
               muted
               playsInline
