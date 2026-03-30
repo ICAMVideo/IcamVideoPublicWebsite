@@ -96,6 +96,34 @@ const productSections = [
   },
 ] as const;
 
+const operationsBands = [
+  {
+    title: "Control room clarity",
+    text: "Synchronised video, GPS, and sensor data in one timeline so teams can validate incidents, coach drivers, and escalate with confidence.",
+    points: [
+      "Single operational timeline across events, trips, and footage.",
+      "Faster triage through context-rich incident views.",
+      "Aligned evidence for internal and external reporting.",
+    ],
+  },
+  {
+    title: "Field-ready reliability",
+    text: "Deployments and support are designed around harsh routes, long duty cycles, and distributed teams that need dependable uptime.",
+    points: [
+      "Monitoring bureau workflows for alarms and recovery support.",
+      "Installation standards for heavy-industry operating conditions.",
+      "Tier-1 technical support for rapid issue handling.",
+    ],
+  },
+] as const;
+
+const proofCards = [
+  { label: "Coverage", value: "24/7", note: "Monitoring and escalation support" },
+  { label: "Report library", value: "450+", note: "Operational, safety, and BI templates" },
+  { label: "Platform access", value: "3", note: "Web, desktop, and mobile interfaces" },
+  { label: "Camera channels", value: "Up to 16", note: "Flexible in-vehicle configurations" },
+] as const;
+
 function SectionLabel({ children }: { children: string }) {
   return (
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
@@ -117,6 +145,25 @@ function BulletList({ items }: { items: readonly string[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+function PlaceholderVisual({ title }: { title: string }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-zinc-300/80 bg-gradient-to-br from-zinc-100 via-zinc-50 to-white p-5">
+      <div className="absolute inset-0 opacity-40 [background:radial-gradient(circle_at_20%_20%,rgba(9,0,136,0.12),transparent_52%)]" />
+      <div className="relative">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+          Placeholder module
+        </p>
+        <p className="mt-2 text-sm font-semibold text-zinc-800">{title}</p>
+        <div className="mt-4 space-y-2">
+          <div className="h-2.5 w-5/6 rounded bg-zinc-300/70" />
+          <div className="h-2.5 w-3/4 rounded bg-zinc-300/60" />
+          <div className="h-2.5 w-2/3 rounded bg-zinc-300/50" />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -174,23 +221,19 @@ export function MarketingSections() {
             </div>
           </div>
 
-          <aside className="border border-[color:var(--border)] bg-[color:var(--surface)] p-8 shadow-[0_1px_0_rgba(15,20,25,0.04)] sm:p-10">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-              At a glance
-            </p>
-            <ul className="mt-8 space-y-8">
-              {pillars.map((p) => (
-                <li
-                  key={p.label}
-                  className="border-l-2 border-[color:var(--accent)] pl-5"
-                >
-                  <p className="text-sm font-semibold text-zinc-900">{p.label}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-zinc-600">
-                    {p.text}
-                  </p>
-                </li>
-              ))}
-            </ul>
+          <aside className="space-y-4">
+            {pillars.map((p) => (
+              <div
+                key={p.label}
+                className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-[0_1px_0_rgba(15,20,25,0.04)]"
+              >
+                <p className="text-sm font-semibold text-zinc-900">{p.label}</p>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                  {p.text}
+                </p>
+              </div>
+            ))}
+            <PlaceholderVisual title="Platform map & command center snapshot" />
           </aside>
         </div>
       </section>
@@ -203,80 +246,127 @@ export function MarketingSections() {
           <div className="max-w-3xl">
             <SectionLabel>Core products & systems</SectionLabel>
             <h2 className="mt-5 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
-              Hardware, software, and services in one stack
+              Horizontal service carousel
             </h2>
             <p className="mt-5 text-base leading-[1.75] text-zinc-600 sm:text-lg">
-              From in-vehicle capture and sensors to dashboards, analytics, and
-              24/7 monitoring—each layer is designed to work together so your
-              fleet sees the full picture.
+              Scroll sideways through service cards. Each card keeps one clear
+              capability story with supporting bullets.
             </p>
           </div>
 
-          <div className="mx-auto mt-16 max-w-3xl space-y-16 border-t border-[color:var(--border)] pt-16">
-            {productSections.map((block, i) => (
+          <div className="mt-12 overflow-x-auto pb-2 [scrollbar-width:thin]">
+            <div className="flex snap-x snap-mandatory gap-5">
+              {productSections.map((block, i) => (
+                <article
+                  key={block.id}
+                  id={block.id}
+                  className="min-w-[86%] snap-start rounded-2xl border border-zinc-200 bg-white p-6 shadow-[0_8px_24px_-18px_rgba(15,23,42,0.45)] sm:min-w-[70%] lg:min-w-[46%]"
+                >
+                  <p className="text-xs font-semibold tabular-nums text-zinc-400">
+                    {String(i + 1).padStart(2, "0")}
+                  </p>
+                  <h3 className="mt-2 text-xl font-semibold tracking-tight text-zinc-900">
+                    {block.title}
+                  </h3>
+                  <p className="mt-4 text-sm leading-[1.7] text-zinc-600">
+                    {block.intro}
+                  </p>
+                  <BulletList items={block.bullets} />
+                  <div className="mt-6">
+                    <PlaceholderVisual title={`${block.title} visual placeholder`} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="border-t border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-5 py-20 sm:px-8 sm:py-24"
+        aria-labelledby="ops-heading"
+      >
+        <div className="mx-auto max-w-6xl">
+          <SectionLabel>Operations & support</SectionLabel>
+          <h2
+            id="ops-heading"
+            className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl"
+          >
+            Alternating two-column operational depth
+          </h2>
+          <div className="mt-12 space-y-6">
+            {operationsBands.map((band, i) => (
               <article
-                key={block.id}
-                id={block.id}
-                className="scroll-mt-28 border-b border-[color:var(--border)] pb-16 last:border-b-0 last:pb-0"
+                key={band.title}
+                className={`grid gap-6 rounded-2xl border border-zinc-200 p-6 sm:p-8 lg:grid-cols-2 lg:gap-10 ${
+                  i % 2 === 0 ? "bg-white" : "bg-zinc-950 text-zinc-100"
+                }`}
               >
-                <p className="text-xs font-semibold tabular-nums text-zinc-400">
-                  {String(i + 1).padStart(2, "0")}
-                </p>
-                <h3 className="mt-2 text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">
-                  {block.title}
-                </h3>
-                <p className="mt-4 text-base leading-[1.75] text-zinc-600">
-                  {block.intro}
-                </p>
-                <BulletList items={block.bullets} />
+                <div className={i % 2 === 0 ? "" : "lg:order-2"}>
+                  <h3
+                    className={`text-2xl font-semibold tracking-tight ${
+                      i % 2 === 0 ? "text-zinc-900" : "text-white"
+                    }`}
+                  >
+                    {band.title}
+                  </h3>
+                  <p
+                    className={`mt-4 text-sm leading-[1.8] ${
+                      i % 2 === 0 ? "text-zinc-600" : "text-zinc-300"
+                    }`}
+                  >
+                    {band.text}
+                  </p>
+                  <ul className="mt-5 space-y-3">
+                    {band.points.map((line) => (
+                      <li
+                        key={line}
+                        className={`flex gap-3 text-sm leading-relaxed ${
+                          i % 2 === 0 ? "text-zinc-700" : "text-zinc-300"
+                        }`}
+                      >
+                        <span
+                          className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${
+                            i % 2 === 0
+                              ? "bg-[color:var(--accent)]"
+                              : "bg-[color:var(--accent-on-dark)]"
+                          }`}
+                          aria-hidden
+                        />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className={i % 2 === 0 ? "" : "lg:order-1"}>
+                  <PlaceholderVisual title={`${band.title} schematic placeholder`} />
+                </div>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section
-        className="border-t border-zinc-800 bg-zinc-950 px-5 py-20 text-zinc-100 sm:px-8 sm:py-24"
-        aria-labelledby="ops-heading"
-      >
+      <section className="border-t border-zinc-800 bg-zinc-950 px-5 py-16 text-zinc-100 sm:px-8 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 lg:items-center">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent-on-dark)]">
-                Operations & support
-              </p>
-              <h2
-                id="ops-heading"
-                className="mt-4 text-3xl font-semibold tracking-tight text-white sm:text-4xl"
+          <SectionLabel>Proof points</SectionLabel>
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {proofCards.map((card) => (
+              <article
+                key={card.label}
+                className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5"
               >
-                From reactive incidents to proactive fleet control
-              </h2>
-              <p className="mt-6 text-base leading-[1.75] text-zinc-400">
-                South African and regional fleets face high-liability routes,
-                remote sites, and round-the-clock movement. iCAM combines
-                structured data, video, and bureau services so control rooms and
-                field teams can act quickly—with reporting that stands up to
-                internal review, insurers, and regulators.
-              </p>
-            </div>
-            <ul className="space-y-5">
-              {[
-                "Synchronised video, GPS, and sensor data in one timeline and reporting layer.",
-                "Monitoring bureau services for alarms, recovery, and escalation—not just software licenses.",
-                "Installation and tier-1 support aimed at reliable uptime in harsh operating environments.",
-              ].map((line) => (
-                <li
-                  key={line}
-                  className="flex gap-3 text-sm leading-relaxed text-zinc-300"
-                >
-                  <span
-                    className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--accent-on-dark)]"
-                    aria-hidden
-                  />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
+                <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
+                  {card.label}
+                </p>
+                <p className="mt-3 text-2xl font-semibold text-white">
+                  {card.value}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+                  {card.note}
+                </p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
