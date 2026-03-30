@@ -125,6 +125,17 @@ const proofCards = [
   { label: "Camera channels", value: "Up to 16", note: "Flexible in-vehicle configurations" },
 ] as const;
 
+const clientLogos = [
+  "Fleetline Logistics",
+  "Northstar Mining",
+  "InterCity Coaches",
+  "RapidSecure",
+  "CargoLink SA",
+  "MetroFuel",
+  "TransBuild Group",
+  "BlueRoute Transport",
+] as const;
+
 function SectionLabel({ children }: { children: string }) {
   return (
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
@@ -231,15 +242,37 @@ export function MarketingSections() {
           <div className="max-w-3xl">
             <SectionLabel>Core products & systems</SectionLabel>
             <h2 className="mt-5 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
-              Horizontal service carousel
+              Operational capabilities across vehicle types
             </h2>
             <p className="mt-5 text-base leading-[1.75] text-zinc-600 sm:text-lg">
-              Scroll sideways through service cards. Each card keeps one clear
-              capability story with supporting bullets.
+              From capture and tracking to safety analytics and recovery support,
+              each capability is designed to work as one connected operating
+              system for fleet teams.
             </p>
           </div>
 
           <ScrollLinkedServicesCarousel items={productSections} />
+        </div>
+      </section>
+
+      <section className="border-t border-[color:var(--border)] bg-[color:var(--background)] px-5 py-14 sm:px-8 sm:py-16">
+        <div className="mx-auto max-w-6xl">
+          <SectionLabel>Trusted by clients</SectionLabel>
+          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+            Continuous deployments across transport, security, and heavy industry
+          </h2>
+          <div className="mt-8 overflow-hidden py-4">
+            <div className="client-marquee-track">
+              {[...clientLogos, ...clientLogos].map((name, i) => (
+                <div
+                  key={`${name}-${i}`}
+                  className="mx-2 inline-flex min-w-[10.5rem] items-center justify-center rounded-lg bg-white/85 px-4 py-3 text-sm font-medium text-zinc-600"
+                >
+                  {name}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

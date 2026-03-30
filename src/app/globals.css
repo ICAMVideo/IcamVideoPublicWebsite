@@ -35,3 +35,18 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
 }
+
+@keyframes client-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.client-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: client-marquee 26s linear infinite;
+}

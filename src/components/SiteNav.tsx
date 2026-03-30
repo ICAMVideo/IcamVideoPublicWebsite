@@ -34,17 +34,17 @@ type FlyoutItem = { href: string; title: string; description: string };
 
 const platformItems: FlyoutItem[] = [
   {
-    href: "/#services",
+    href: "/solutions/fuel-tanker",
     title: "Video telematics",
     description: "In-cab capture, cloud retention, and structured review",
   },
   {
-    href: "/#services",
+    href: "/solutions/all",
     title: "Fleet tracking",
     description: "Live GPS, routes, and a single operational picture",
   },
   {
-    href: "/#services",
+    href: "/solutions/ambulance-security",
     title: "Driver safety",
     description: "AI-assisted signals, prioritised alerts, coaching workflows",
   },
@@ -57,12 +57,12 @@ const solutionsItems: FlyoutItem[] = [
     description: "Vehicle categories and deployment-specific solution sets",
   },
   {
-    href: "/#overview",
+    href: "/solutions/all",
     title: "Fleet operators",
     description: "Regional and mixed fleets with clear day-to-day workflows",
   },
   {
-    href: "/#overview",
+    href: "/solutions/all",
     title: "Enterprise",
     description: "Scale, roles, and reporting for distributed organisations",
   },
@@ -274,14 +274,14 @@ export function SiteNav() {
               </div>
 
               <Link
-                href="/#services"
+                href="/solutions"
                 className={`${linkClass} px-3 py-1.5`}
                 onClick={closeDesk}
               >
                 Resources
               </Link>
               <Link
-                href="/#overview"
+                href="/solutions/all"
                 className={`${linkClass} px-3 py-1.5`}
                 onClick={closeDesk}
               >
@@ -474,13 +474,13 @@ export function SiteNav() {
                 </div>
 
                 <Link
-                  href="/#services"
+                  href="/solutions"
                   className={`${mobileLinkClass} border-b border-zinc-700/50`}
                   onClick={closeMobile}
                 >
                   Resources
                 </Link>
-                <Link href="/#overview" className={mobileLinkClass} onClick={closeMobile}>
+                <Link href="/solutions/all" className={mobileLinkClass} onClick={closeMobile}>
                   About
                 </Link>
               </nav>
