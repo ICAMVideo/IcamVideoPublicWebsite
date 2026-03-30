@@ -1,15 +1,24 @@
+import Image from "next/image";
+import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { SiteNav } from "@/components/SiteNav";
 
-const solutions = [
-  "Tipper / Side Tipper",
-  "Tautliner / Box Body",
-  "Fuel Tanker",
-  "Bus",
-  "Yellow Metal / Mining",
-  "Taxi / Car",
-  "Ambulance / Security",
-  "All",
+type SolutionCard = {
+  name: string;
+  href?: string;
+  featured?: boolean;
+  accent?: boolean;
+};
+
+const solutions: SolutionCard[] = [
+  { name: "Tipper / Side Tipper" },
+  { name: "Tautliner / Box Body" },
+  { name: "Fuel Tanker", href: "/solutions/fuel-tanker", featured: true },
+  { name: "Bus" },
+  { name: "Yellow Metal / Mining" },
+  { name: "Taxi / Car" },
+  { name: "Ambulance / Security" },
+  { name: "All", accent: true },
 ] as const;
 
 export default function SolutionsPage() {
@@ -35,25 +44,52 @@ export default function SolutionsPage() {
 
       <section className="px-5 py-14 sm:px-8 sm:py-20">
         <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {solutions.map((item, i) => (
-            <article
-              key={item}
-              className={`rounded-2xl border p-6 shadow-[0_1px_0_rgba(15,20,25,0.04)] transition ${
-                item === "All"
+          {solutions.map((item, i) => {
+            const card = (
+              <article
+                className={`rounded-2xl border p-6 shadow-[0_1px_0_rgba(15,20,25,0.04)] transition ${
+                  item.accent
                   ? "border-[color:var(--accent)] bg-[color:var(--surface-elevated)]"
                   : "border-[color:var(--border)] bg-[color:var(--surface)]"
-              }`}
-            >
-              <p className="text-xs font-semibold tabular-nums text-zinc-400">
-                {String(i + 1).padStart(2, "0")}
-              </p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight">{item}</h2>
-              <div className="mt-5 space-y-2">
-                <div className="h-2.5 w-5/6 rounded bg-zinc-200" />
-                <div className="h-2.5 w-2/3 rounded bg-zinc-200/80" />
-              </div>
-            </article>
-          ))}
+                } ${item.href ? "hover:-translate-y-0.5 hover:shadow-[0_10px_28px_-20px_rgba(15,23,42,0.45)]" : ""}`}
+              >
+                <p className="text-xs font-semibold tabular-nums text-zinc-400">
+                  {String(i + 1).padStart(2, "0")}
+                </p>
+                <h2 className="mt-2 text-xl font-semibold tracking-tight">{item.name}</h2>
+                {item.featured ? (
+                  <div className="mt-5 overflow-hidden rounded-xl border border-zinc-200 bg-white p-3">
+                    <Image
+                      src="/FuelSolution/truck.png"
+                      alt="Fuel tanker telematics overview"
+                      width={1200}
+                      height={860}
+                      className="h-auto w-full rounded-lg object-contain"
+                    />
+                    <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      Open interactive view
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-5 space-y-2">
+                    <div className="h-2.5 w-5/6 rounded bg-zinc-200" />
+                    <div className="h-2.5 w-2/3 rounded bg-zinc-200/80" />
+                  </div>
+                )}
+              </article>
+            );
+
+            if (!item.href) return <div key={item.name}>{card}</div>;
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]"
+              >
+                {card}
+              </Link>
+            );
+          })}
         </div>
       </section>
 
