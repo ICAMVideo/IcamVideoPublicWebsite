@@ -126,14 +126,14 @@ const proofCards = [
 ] as const;
 
 const clientLogos = [
-  "Fleetline Logistics",
-  "Northstar Mining",
-  "InterCity Coaches",
-  "RapidSecure",
-  "CargoLink SA",
-  "MetroFuel",
-  "TransBuild Group",
-  "BlueRoute Transport",
+  "Add logo here",
+  "Add logo here",
+  "Add logo here",
+  "Add logo here",
+  "Add logo here",
+  "Add logo here",
+  "Add logo here",
+  "Add logo here",
 ] as const;
 
 function SectionLabel({ children }: { children: string }) {
