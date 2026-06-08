@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
-import { ScrollLinkedServicesCarousel } from "@/components/ScrollLinkedServicesCarousel";
 import { Reveal, Counter, ScrollReveal } from "@/components/Reveal";
 import { CONTACT, STATS, TAGLINE } from "@/lib/brand";
 import { solutions } from "@/lib/solutions";
@@ -195,18 +194,18 @@ export function MarketingSections() {
             </div>
           </Reveal>
 
-          <div className="space-y-4">
-            {pillars.map((p, i) => (
+          <div className="space-y-8">
+            {pillars.map((p) => (
               <ScrollReveal
                 key={p.label}
-                direction={i % 2 === 0 ? "right" : "left"}
-                distance={90}
-                className="hud-corners rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6"
+                direction="right"
+                distance={70}
+                className="border-l-2 border-[color:var(--accent)] pl-5"
               >
-                <p className="text-sm font-semibold text-[color:var(--foreground)]">
+                <p className="text-base font-semibold text-[color:var(--foreground)]">
                   {p.label}
                 </p>
-                <p className="mt-2 text-sm leading-relaxed text-[color:var(--text-muted)]">
+                <p className="mt-1.5 text-sm leading-relaxed text-[color:var(--text-muted)]">
                   {p.text}
                 </p>
               </ScrollReveal>
@@ -215,19 +214,19 @@ export function MarketingSections() {
         </div>
 
         {/* live stats strip */}
-        <div className="mx-auto mt-16 grid max-w-6xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--border)] lg:grid-cols-4">
+        <div className="mx-auto mt-16 grid max-w-6xl grid-cols-2 gap-y-8 border-y border-[color:var(--border)] py-10 lg:grid-cols-4 lg:gap-y-0 lg:divide-x lg:divide-[color:var(--border)]">
           {STATS.map((s, i) => (
             <ScrollReveal
               key={s.label}
               direction={i % 2 === 0 ? "left" : "right"}
-              distance={70}
-              className="bg-[color:var(--surface)] p-6"
+              distance={60}
+              className="px-2 lg:px-7"
             >
               <Counter
                 value={s.value}
                 className="font-hud text-3xl font-semibold text-[color:var(--foreground)] sm:text-4xl"
               />
-              <p className="mt-2 text-sm font-medium text-[color:var(--accent)]">
+              <p className="mt-2 text-sm font-medium text-[color:var(--accent-on-dark)]">
                 {s.label}
               </p>
               <p className="mt-1 text-xs leading-relaxed text-[color:var(--text-faint)]">
@@ -238,10 +237,10 @@ export function MarketingSections() {
         </div>
       </section>
 
-      {/* ---------- CORE SYSTEMS (pinned carousel) ---------- */}
+      {/* ---------- CORE SYSTEMS (grid) ---------- */}
       <section
         id="services"
-        className="scroll-mt-24 border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-20 sm:px-8 sm:py-28"
+        className="scroll-mt-24 overflow-hidden border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-20 sm:px-8 sm:py-28"
       >
         <div className="mx-auto max-w-6xl">
           <Reveal className="max-w-3xl">
@@ -251,11 +250,47 @@ export function MarketingSections() {
             </h2>
             <p className="mt-5 text-base leading-[1.8] text-[color:var(--text-muted)] sm:text-lg">
               From capture and tracking to safety AI, BI reporting and recovery
-              support — each capability is designed to work together. Scroll
-              sideways through the stack.
+              support — each capability is built to work together.
             </p>
           </Reveal>
-          <ScrollLinkedServicesCarousel items={productSections} />
+
+          <div className="mt-14 grid gap-x-14 gap-y-12 md:grid-cols-2">
+            {productSections.map((p, i) => (
+              <ScrollReveal
+                key={p.id}
+                direction={i % 2 === 0 ? "left" : "right"}
+                distance={60}
+              >
+                <div id={p.id} className="scroll-mt-24 border-t border-[color:var(--border)] pt-6">
+                  <div className="flex items-center gap-3">
+                    <span className="font-hud text-sm tabular-nums font-semibold text-[color:var(--accent-on-dark)]">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <h3 className="text-xl font-semibold tracking-tight text-[color:var(--foreground)]">
+                      {p.title}
+                    </h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-relaxed text-[color:var(--text-muted)]">
+                    {p.intro}
+                  </p>
+                  <ul className="mt-4 space-y-2.5">
+                    {p.bullets.map((b) => (
+                      <li
+                        key={b}
+                        className="flex gap-2.5 text-sm leading-relaxed text-[color:var(--text-muted)]"
+                      >
+                        <span
+                          className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--accent-on-dark)]"
+                          aria-hidden
+                        />
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </ScrollReveal>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -273,27 +308,33 @@ export function MarketingSections() {
               appears.
             </p>
           </Reveal>
-          <div className="grid grid-cols-2 gap-3">
-            {adasFeatures.map((f, i) => {
-              const last = i === adasFeatures.length - 1;
-              return (
-                <ScrollReveal
-                  key={f}
-                  direction={last ? "up" : i % 2 === 0 ? "left" : "right"}
-                  distance={70}
-                  className={`rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 ${
-                    last ? "col-span-2" : ""
-                  }`}
+          <div className="grid grid-cols-1 gap-x-10 sm:grid-cols-2">
+            {adasFeatures.map((f, i) => (
+              <ScrollReveal
+                key={f}
+                direction={i % 2 === 0 ? "left" : "right"}
+                distance={50}
+                className="flex items-center gap-3 border-b border-[color:var(--border)] py-3.5"
+              >
+                <svg
+                  className="h-4 w-4 shrink-0 text-[color:var(--accent-on-dark)]"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  aria-hidden
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="inline-block h-2 w-2 rounded-full bg-[color:var(--accent)]" />
-                    <span className="text-sm font-medium text-[color:var(--foreground)]">
-                      {f}
-                    </span>
-                  </div>
-                </ScrollReveal>
-              );
-            })}
+                  <path
+                    d="M3.5 8.5l3 3 6-7"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <span className="text-sm font-medium text-[color:var(--foreground)]">
+                  {f}
+                </span>
+              </ScrollReveal>
+            ))}
           </div>
         </div>
       </section>
@@ -327,7 +368,7 @@ export function MarketingSections() {
                 >
                   <Link
                     href={`/solutions/${item.slug}`}
-                    className="hud-corners group block overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] transition hover:-translate-y-1 hover:border-[color:var(--accent)]"
+                    className="group block overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] transition hover:-translate-y-1 hover:border-[color:var(--accent)]"
                   >
                     <div className="relative aspect-[16/10] overflow-hidden bg-[color:var(--surface-elevated)]">
                       <Image
@@ -337,7 +378,6 @@ export function MarketingSections() {
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
                       />
-                      <div className="pointer-events-none absolute inset-0 hud-grid opacity-40" />
                     </div>
                     <div className="flex items-center justify-between p-5">
                       <span className="text-base font-semibold text-[color:var(--foreground)]">
@@ -369,12 +409,12 @@ export function MarketingSections() {
               Built for heavy industry, backed 24/7
             </h2>
           </Reveal>
-          <div className="mt-12 space-y-6">
+          <div className="mt-12 space-y-12">
             {operationsBands.map((band, i) => (
-              <ScrollReveal key={band.title} direction={i % 2 === 0 ? "left" : "right"} distance={90}>
-                <article className="hud-corners grid gap-6 rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] p-7 sm:p-9 lg:grid-cols-[0.4fr_0.6fr] lg:gap-10">
+              <ScrollReveal key={band.title} direction={i % 2 === 0 ? "left" : "right"} distance={60}>
+                <div className="grid gap-6 border-t border-[color:var(--border)] pt-8 lg:grid-cols-[0.4fr_0.6fr] lg:gap-10">
                   <div>
-                    <span className="font-hud text-xs tabular-nums text-[color:var(--data-soft)]">
+                    <span className="font-hud text-xs tabular-nums text-[color:var(--accent-on-dark)]">
                       0{i + 1}
                     </span>
                     <h3 className="mt-3 text-2xl font-semibold tracking-tight text-[color:var(--foreground)]">
@@ -391,14 +431,14 @@ export function MarketingSections() {
                         className="flex gap-3 text-sm leading-relaxed text-[color:var(--text-muted)]"
                       >
                         <span
-                          className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--accent)]"
+                          className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--accent-on-dark)]"
                           aria-hidden
                         />
                         <span>{line}</span>
                       </li>
                     ))}
                   </ul>
-                </article>
+                </div>
               </ScrollReveal>
             ))}
           </div>
@@ -414,7 +454,7 @@ export function MarketingSections() {
               {[...clientLogos, ...clientLogos].map((name, i) => (
                 <div
                   key={`${name}-${i}`}
-                  className="font-hud mx-2 inline-flex min-w-[10.5rem] items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 text-xs uppercase tracking-[0.12em] text-[color:var(--text-faint)]"
+                  className="font-hud mx-6 inline-flex min-w-[9rem] items-center justify-center text-xs uppercase tracking-[0.18em] text-[color:var(--text-faint)]"
                 >
                   {name}
                 </div>

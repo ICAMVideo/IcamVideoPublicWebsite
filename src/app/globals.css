@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "lenis/dist/lenis.css";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 /*
   iCAM Video Telematics — design system.
@@ -21,21 +22,21 @@
   --text-muted: #9aa4c6;
   --text-faint: #6b76a0;
 
-  /* Brand — single blue family, no rainbow */
-  --brand: #1a23a8;
-  --accent: #4f6bff;          /* royal blue for dark UI */
-  --accent-bright: #6b83ff;
-  --accent-deep: #2c3fd6;
-  --accent-on-dark: #9db0ff;
-  --data: #58a6ff;            /* lighter sky blue (still blue) */
+  /* Brand — iCAM deep blue, solid (no purple glow) */
+  --brand: #090088;
+  --accent: #090088;          /* iCAM deep blue */
+  --accent-bright: #161296;   /* hover, slightly lifted */
+  --accent-deep: #06005c;
+  --accent-on-dark: #8ec2ff;  /* readable blue accent text on dark */
+  --data: #58a6ff;            /* clean sky blue (non-purple) */
   --data-soft: #8ec2ff;
   --signal: #34d399;          /* functional "online" green */
   --warn: #f5a623;
 
-  /* Subtle, single-direction shadows (no glow blooms) */
+  /* Flat, neutral shadows — no coloured glow blooms */
   --shadow-soft: 0 10px 30px -18px rgba(0, 0, 0, 0.7);
-  --shadow-accent: 0 8px 22px -12px rgba(79, 107, 255, 0.6);
-  --glow-accent: var(--shadow-accent);
+  --shadow-accent: 0 8px 20px -14px rgba(0, 0, 0, 0.6);
+  --glow-accent: var(--shadow-soft);
 
   --nav-bg: rgba(7, 11, 26, 0.78);
   --nav-border: rgba(255, 255, 255, 0.08);
@@ -63,19 +64,19 @@ html.light {
   --text-muted: #4a5475;
   --text-faint: #79829e;
 
-  --brand: #1a23a8;
-  --accent: #1f2db8;          /* deep blue, strong on white */
-  --accent-bright: #2c3ed6;
-  --accent-deep: #141c8a;
-  --accent-on-dark: #1f2db8;
+  --brand: #090088;
+  --accent: #090088;          /* iCAM deep blue, strong on white */
+  --accent-bright: #14119c;
+  --accent-deep: #06005c;
+  --accent-on-dark: #090088;
   --data: #1d6fe0;
   --data-soft: #1a5fc4;
   --signal: #15803d;
   --warn: #b45309;
 
   --shadow-soft: 0 12px 30px -20px rgba(15, 23, 60, 0.4);
-  --shadow-accent: 0 10px 24px -14px rgba(31, 45, 184, 0.45);
-  --glow-accent: var(--shadow-accent);
+  --shadow-accent: 0 10px 24px -18px rgba(9, 0, 136, 0.35);
+  --glow-accent: var(--shadow-soft);
 
   --nav-bg: rgba(255, 255, 255, 0.82);
   --nav-border: rgba(11, 18, 48, 0.1);
@@ -200,6 +201,45 @@ body {
 @keyframes float-y {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
+}
+
+/* ---- Map vehicle markers ---- */
+.icam-veh {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+.icam-veh__dot {
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background: #58a6ff;
+  box-shadow: 0 0 0 2px rgba(4, 5, 12, 0.8);
+}
+.icam-veh__pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: #58a6ff;
+  opacity: 0.5;
+  animation: veh-pulse 1.8s ease-out infinite;
+}
+.icam-veh--warn .icam-veh__dot,
+.icam-veh--warn .icam-veh__pulse { background: #f5a623; }
+.icam-veh--crit .icam-veh__dot,
+.icam-veh--crit .icam-veh__pulse { background: #ef4444; }
+@keyframes veh-pulse {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* MapLibre attribution — keep subtle on the dark hero */
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icam-veh__pulse { animation: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

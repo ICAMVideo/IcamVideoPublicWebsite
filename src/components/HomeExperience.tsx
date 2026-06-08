@@ -3,9 +3,9 @@
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useCallback, useLayoutEffect, useState } from "react";
 import { MarketingSections } from "./MarketingSections";
-import { Hero3D } from "./Hero3D";
+import { MapHero } from "./MapHero";
 import { SiteNav } from "./SiteNav";
-import { LoadingScreen } from "./LoadingScreen";
+import { ParticleIntro } from "./ParticleIntro";
 
 function scrollTopHard() {
   window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -13,11 +13,6 @@ function scrollTopHard() {
 
 export function HomeExperience() {
   const [splashDone, setSplashDone] = useState(false);
-  const [heroReady, setHeroReady] = useState(false);
-
-  const onHeroReady = useCallback(() => {
-    setHeroReady(true);
-  }, []);
 
   useLayoutEffect(() => {
     const prev = window.history.scrollRestoration;
@@ -40,7 +35,6 @@ export function HomeExperience() {
   }, []);
 
   const handleSplashComplete = useCallback(() => {
-    if (!heroReady) return;
     try {
       sessionStorage.setItem("icam-splash-seen", "1");
     } catch {
@@ -53,18 +47,13 @@ export function HomeExperience() {
       ScrollTrigger.refresh();
       scrollTopHard();
     });
-  }, [heroReady]);
+  }, []);
 
   return (
     <main className="flex min-h-dvh flex-col bg-[color:var(--background)] text-[color:var(--foreground)]">
       <SiteNav />
-      <Hero3D onReady={onHeroReady} />
-      {!splashDone ? (
-        <LoadingScreen
-          onComplete={handleSplashComplete}
-          waitForReady={heroReady}
-        />
-      ) : null}
+      <MapHero />
+      {!splashDone ? <ParticleIntro onComplete={handleSplashComplete} /> : null}
       <MarketingSections />
     </main>
   );
