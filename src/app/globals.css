@@ -1,52 +1,209 @@
 @import "tailwindcss";
 @import "lenis/dist/lenis.css";
 
+/*
+  iCAM Video Telematics — design system.
+  Dark-blue, solid-colour palette (minimal gradients). Light + dark themes via
+  the `.light` class on <html>. Components read CSS variables so they flip.
+*/
+
+/* ---- DARK (default) ---- */
 :root {
-  --background: #f0eeea;
-  --foreground: #0f1419;
+  --background: #070b1a;     /* deep navy */
+  --bg-deep: #050814;
+  --surface: #0d1430;        /* dark blue surface */
+  --surface-elevated: #141d40;
+  --surface-glass: rgba(13, 20, 48, 0.66);
+  --foreground: #eef1fb;
+  --border: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.20);
+
+  --text-muted: #9aa4c6;
+  --text-faint: #6b76a0;
+
+  /* Brand — single blue family, no rainbow */
+  --brand: #1a23a8;
+  --accent: #4f6bff;          /* royal blue for dark UI */
+  --accent-bright: #6b83ff;
+  --accent-deep: #2c3fd6;
+  --accent-on-dark: #9db0ff;
+  --data: #58a6ff;            /* lighter sky blue (still blue) */
+  --data-soft: #8ec2ff;
+  --signal: #34d399;          /* functional "online" green */
+  --warn: #f5a623;
+
+  /* Subtle, single-direction shadows (no glow blooms) */
+  --shadow-soft: 0 10px 30px -18px rgba(0, 0, 0, 0.7);
+  --shadow-accent: 0 8px 22px -12px rgba(79, 107, 255, 0.6);
+  --glow-accent: var(--shadow-accent);
+
+  --nav-bg: rgba(7, 11, 26, 0.78);
+  --nav-border: rgba(255, 255, 255, 0.08);
+  --nav-text: #c8cee6;
+  --nav-text-strong: #ffffff;
+  --nav-dropdown: #0d1430;
+  --nav-sheet: #0b1128;
+
+  --hud-line: rgba(255, 255, 255, 0.05);
+
+  --font-hud: var(--font-mono-brand), ui-monospace, "SF Mono", monospace;
+}
+
+/* ---- LIGHT ---- */
+html.light {
+  --background: #eef1f8;
+  --bg-deep: #e4e9f4;
   --surface: #ffffff;
-  --surface-elevated: #faf9f7;
-  --border: oklch(0.88 0.008 80);
-  --muted: #4b5563;
-  --accent: #090088;
-  --accent-bright: #0b00a8;
-  --accent-muted: oklch(0.32 0.19 278 / 0.14);
-  /* Readable tint of brand blue on dark sections (nav, zinc-950 bands) */
-  --accent-on-dark: #a8b4ff;
-  /* Nav */
-  --nav-bg: oklch(0.12 0.015 260 / 0.94);
-  --nav-border: oklch(1 0 0 / 0.08);
-  --nav-dropdown: oklch(0.16 0.02 260 / 0.98);
-  --nav-sheet: oklch(0.14 0.02 260 / 0.97);
+  --surface-elevated: #f5f7fc;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --foreground: #0b1230;
+  --border: rgba(11, 18, 48, 0.12);
+  --border-strong: rgba(11, 18, 48, 0.22);
+
+  --text-muted: #4a5475;
+  --text-faint: #79829e;
+
+  --brand: #1a23a8;
+  --accent: #1f2db8;          /* deep blue, strong on white */
+  --accent-bright: #2c3ed6;
+  --accent-deep: #141c8a;
+  --accent-on-dark: #1f2db8;
+  --data: #1d6fe0;
+  --data-soft: #1a5fc4;
+  --signal: #15803d;
+  --warn: #b45309;
+
+  --shadow-soft: 0 12px 30px -20px rgba(15, 23, 60, 0.4);
+  --shadow-accent: 0 10px 24px -14px rgba(31, 45, 184, 0.45);
+  --glow-accent: var(--shadow-accent);
+
+  --nav-bg: rgba(255, 255, 255, 0.82);
+  --nav-border: rgba(11, 18, 48, 0.1);
+  --nav-text: #424c6b;
+  --nav-text-strong: #0b1230;
+  --nav-dropdown: #ffffff;
+  --nav-sheet: #ffffff;
+
+  --hud-line: rgba(11, 18, 48, 0.06);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-accent: var(--accent);
+  --color-data: var(--data);
   --font-sans: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-brand), ui-monospace, monospace;
 }
 
 html {
   overflow-anchor: none;
+  scroll-behavior: smooth;
+  background: var(--bg-deep);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-deep);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 999px;
+  border: 2px solid var(--bg-deep);
+}
+
+/* ---- Utilities ---- */
+.font-hud {
+  font-family: var(--font-hud);
+  font-feature-settings: "tnum" 1;
+}
+
+/* Solid brand colour (no gradient) — kept name for compatibility. */
+.text-gradient-brand {
+  color: var(--accent);
+}
+
+.hud-grid {
+  background-image:
+    linear-gradient(var(--hud-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hud-line) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.glass-panel {
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+  border: 1px solid var(--border);
+}
+
+.hud-corners {
+  position: relative;
+}
+.hud-corners::before,
+.hud-corners::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--accent);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.hud-corners::before {
+  top: 8px;
+  left: 8px;
+  border-top: 1.5px solid;
+  border-left: 1.5px solid;
+}
+.hud-corners::after {
+  bottom: 8px;
+  right: 8px;
+  border-bottom: 1.5px solid;
+  border-right: 1.5px solid;
+}
+
+/* ---- Keyframes ---- */
 @keyframes client-marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
-
 .client-marquee-track {
   display: flex;
   width: max-content;
-  animation: client-marquee 26s linear infinite;
+  animation: client-marquee 30s linear infinite;
+}
+
+@keyframes hud-blink {
+  0%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0.25; }
+}
+.hud-blink {
+  animation: hud-blink 1.4s steps(1) infinite;
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .client-marquee-track,
+  .hud-blink { animation: none; }
 }

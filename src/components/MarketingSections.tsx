@@ -1,201 +1,179 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ScrollLinkedServicesCarousel } from "@/components/ScrollLinkedServicesCarousel";
+import { Reveal, Counter, ScrollReveal } from "@/components/Reveal";
+import { CONTACT, STATS, TAGLINE } from "@/lib/brand";
+import { solutions } from "@/lib/solutions";
 
-const sectors = [
-  "Transport",
-  "Mining",
-  "Construction",
-  "Logistics",
-  "Industrial",
-] as const;
+const sectors = ["Transport", "Mining", "Construction", "Logistics", "Industrial"] as const;
 
 const pillars = [
   {
-    label: "One ecosystem",
-    text: "Video, GPS, telematics, driver analytics, and BI reporting in a single platform—web, desktop, and mobile.",
+    label: "Driver Safety",
+    text: "ADAS and driver-fatigue AI warn before incidents — fatigue, distraction, phone use, headway and collision.",
   },
   {
-    label: "Evidence plus context",
-    text: "Visual proof alongside sensor and location data so teams respond with clarity—not guesswork.",
+    label: "Road & Fleet Safety",
+    text: "Live video, GPS and sensor context in one platform so teams respond with proof, not guesswork.",
   },
   {
-    label: "Built for heavy industry",
-    text: "Deployments aligned to how commercial fleets run in transport, resources, construction, and logistics.",
+    label: "Fleet Optimisation",
+    text: "Tier-1 hardware to CE/ISO standards, 450+ report layouts, and driver scoring that drives real change.",
   },
 ] as const;
 
 const productSections = [
   {
     id: "video-telematics",
-    title: "Video telematics systems",
+    title: "Vehicle Video Systems (MDVR)",
     intro:
-      "High-definition in-vehicle cameras integrated with telematics hardware capture both what happened on the road and the vehicle data behind it—giving managers a contextualised view of operations.",
+      "HD in-vehicle cameras fused with telematics capture both what happened on the road and the vehicle data behind it — full context for every event.",
     bullets: [
-      "Multi-camera configurations with up to 16 channels for road-facing and driver-facing coverage.",
-      "Configurable resolutions from VGA through to Full HD (1080p).",
-      "Event-triggered recording for accidents, harsh braking, speeding, collisions, and alarms—with historical footage by date and time.",
-      "GPS, accelerometers, Wi-Fi, and cellular connectivity (4G / SIM) on devices.",
-      "Live video streaming over mobile networks for real-time visibility when it matters.",
+      "1 to 16 camera channels with models to suit all vehicle types.",
+      "Resolution configurable from VGA up to Full HD 1080P.",
+      "64GB to 2TB onboard storage — up to ~900 hours of footage.",
+      "Embedded GPS, Wi-Fi, 4G (SIM) and accelerometer on every device.",
+      "Live stream, event/alarm-triggered clips, and historical footage by date/time.",
     ],
   },
   {
     id: "tracking-hardware",
-    title: "Tracking & telematics hardware",
+    title: "Tracking & Telematics",
     intro:
-      "Beyond video, iCAM supplies tracking devices that monitor location and vehicle status continuously, with sensor data fed back into the same central platform as your video and events.",
+      "An all-encompassing range of devices for any sector — tracking vehicles, machines, assets and trailers into the same platform as your video.",
     bullets: [
-      "GPS under continuous and event-triggered reporting.",
-      "Support for CANBus, fuel probes, temperature sensors, driver ID (RFID), two-way communication, and satellite modules where required.",
-      "Real-time speed, idle time, route history, and trip detail.",
+      "Continuous and event-triggered GPS reporting.",
+      "CANBUS access plus third-party integration (fuel probes, temperature control).",
+      "Driver ID, RFID buttons, two-way communication and satellite modules.",
+      "Real-time speed, idle time, route history and trip detail.",
     ],
   },
   {
     id: "adas-safety",
-    title: "Driver fatigue & ADAS",
+    title: "Driver Fatigue & ADAS",
     intro:
-      "AI-enabled safety cameras and systems detect risky behaviour early—alerting the control room and, where configured, the driver in-cab to help prevent incidents before they escalate.",
+      "On-board AI safety cameras detect risky behaviour early — alerting the control room and, where configured, the driver in-cab.",
     bullets: [
-      "Fatigue and drowsiness alerts.",
-      "Distraction and mobile phone use detection.",
-      "Headway warnings, collision alerts, and pedestrian detection.",
-      "Facial recognition on select camera systems.",
+      "Fatigue and distraction warnings.",
+      "Mobile-phone-use detection.",
+      "Headway, collision and pedestrian warnings.",
+      "Facial recognition available on the fatigue camera.",
     ],
   },
   {
     id: "platform-software",
-    title: "Platform software & interfaces",
+    title: "Integrated Platform",
     intro:
-      "The stack is designed for day-to-day fleet operations: one place for playback, maps, trips, alerts, and reporting—whether your team works from a control room or the field.",
+      "One place for playback, maps, trips, alerts and reporting — built for control rooms and field teams alike.",
     bullets: [
-      "Web dashboard, desktop client, and mobile apps (iOS & Android).",
-      "Integrated video playback, GPS, trip history, event timelines, alerts, reporting, and analytics.",
-      "Customisable notifications via app, web, email, or SMS.",
-      "Mobile access to live positions, event markers, map trip playback, and vehicle status.",
+      "Web, desktop, iOS and Android versions.",
+      "Integrated telematics, video and fleet management.",
+      "Customisable notifications and event timelines.",
+      "Live positions, map trip playback and vehicle status on mobile.",
     ],
   },
   {
     id: "analytics-reporting",
-    title: "Analytics, intelligence & reporting",
+    title: "Reports & Business Intelligence",
     intro:
-      "Business intelligence and reporting turn telematics and video into decisions—from utilisation and risk to driver coaching and leadership summaries.",
+      "Customizable reporting turns telematics and video into decisions — from utilisation and risk to driver coaching and leadership summaries.",
     bullets: [
-      "Extensive report library (450+ templates) spanning utilisation, driver performance, trips, risk exposure, and more.",
-      "Driver scoring and behaviour reporting to highlight patterns and improvement areas.",
-      "Fleet efficiency, cost, productivity, and operational effectiveness analysis.",
+      "450+ report setup/layout options across the fleet.",
+      "Up to 10,000 possible data fields.",
+      "Customized driver behaviour & scoring with your own weightings.",
+      "Management-level down to per-vehicle and per-driver metrics.",
     ],
   },
   {
     id: "monitoring-support",
-    title: "Monitoring & support services",
+    title: "24/7 Bureau & Support",
     intro:
-      "iCAM backs deployments with monitoring and technical services so hardware and software deliver in the field—not only on paper.",
+      "iCAM backs deployments with monitoring and technical services so hardware and software deliver in the field — not just on paper.",
     bullets: [
-      "24/7 monitoring bureau including vehicle recovery and alarm handling.",
-      "Professional installation and deployment expertise.",
-      "Tier-1 support for customers and technical teams.",
+      "Vehicle recovery, alarm monitoring and incident management.",
+      "Various monitoring packages, including video monitoring.",
+      "Driver behaviour monitoring.",
+      "1st and 2nd tier technical support on a 24/7 basis.",
     ],
   },
 ] as const;
 
+const adasFeatures = [
+  "Fatigue warning",
+  "Distraction warning",
+  "Mobile phone use",
+  "Headway warning",
+  "Collision warning",
+  "Pedestrian warning",
+  "Facial recognition",
+] as const;
+
 const operationsBands = [
   {
-    title: "Control room clarity",
-    text: "Synchronised video, GPS, and sensor data in one timeline so teams can validate incidents, coach drivers, and escalate with confidence.",
+    title: "Control-room clarity",
+    text: "Synchronised video, GPS and sensor data on one timeline so teams can validate incidents, coach drivers and escalate with confidence.",
     points: [
-      "Single operational timeline across events, trips, and footage.",
+      "A single operational timeline across events, trips and footage.",
       "Faster triage through context-rich incident views.",
       "Aligned evidence for internal and external reporting.",
     ],
   },
   {
     title: "Field-ready reliability",
-    text: "Deployments and support are designed around harsh routes, long duty cycles, and distributed teams that need dependable uptime.",
+    text: "Manufactured to CE/ISO standards with Tier-1 quality, deployments are designed around harsh routes, long duty cycles and distributed teams.",
     points: [
-      "Monitoring bureau workflows for alarms and recovery support.",
+      "Monitoring-bureau workflows for alarms and recovery support.",
       "Installation standards for heavy-industry operating conditions.",
       "Tier-1 technical support for rapid issue handling.",
     ],
   },
 ] as const;
 
-const proofCards = [
-  { label: "Coverage", value: "24/7", note: "Monitoring and escalation support" },
-  { label: "Report library", value: "450+", note: "Operational, safety, and BI templates" },
-  { label: "Platform access", value: "3", note: "Web, desktop, and mobile interfaces" },
-  { label: "Camera channels", value: "Up to 16", note: "Flexible in-vehicle configurations" },
-] as const;
-
-const clientLogos = [
-  "Add logo here",
-  "Add logo here",
-  "Add logo here",
-  "Add logo here",
-  "Add logo here",
-  "Add logo here",
-  "Add logo here",
-  "Add logo here",
-] as const;
+const clientLogos = Array.from({ length: 8 }, () => "Your logo here");
 
 function SectionLabel({ children }: { children: string }) {
   return (
-    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
+    <p className="font-hud text-[11px] font-semibold uppercase tracking-[0.28em] text-[color:var(--data-soft)]">
       {children}
     </p>
-  );
-}
-
-function PlaceholderVisual({ title }: { title: string }) {
-  return (
-    <div className="relative overflow-hidden rounded-2xl border border-zinc-300/80 bg-gradient-to-br from-zinc-100 via-zinc-50 to-white p-5">
-      <div className="absolute inset-0 opacity-40 [background:radial-gradient(circle_at_20%_20%,rgba(9,0,136,0.12),transparent_52%)]" />
-      <div className="relative">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-          Placeholder module
-        </p>
-        <p className="mt-2 text-sm font-semibold text-zinc-800">{title}</p>
-        <div className="mt-4 space-y-2">
-          <div className="h-2.5 w-5/6 rounded bg-zinc-300/70" />
-          <div className="h-2.5 w-3/4 rounded bg-zinc-300/60" />
-          <div className="h-2.5 w-2/3 rounded bg-zinc-300/50" />
-        </div>
-      </div>
-    </div>
   );
 }
 
 export function MarketingSections() {
   return (
     <>
+      {/* ---------- OVERVIEW ---------- */}
       <section
         id="overview"
-        className="scroll-mt-24 border-t border-[color:var(--border)] bg-[radial-gradient(circle_at_20%_10%,rgba(9,0,136,0.08),transparent_40%),var(--background)] px-5 py-24 sm:px-8 sm:py-32"
+        className="scroll-mt-24 overflow-hidden border-t border-[color:var(--border)] bg-[color:var(--background)] px-5 py-24 sm:px-8 sm:py-32"
       >
-        <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-20 lg:items-start">
-          <div>
-            <SectionLabel>Overview</SectionLabel>
-            <h1 className="mt-6 text-balance text-3xl font-semibold tracking-tight text-zinc-900 sm:text-[2.55rem] lg:text-[3.1rem] lg:leading-[1.08]">
-              Integrated video telematics for commercial fleets
-            </h1>
-            <p className="mt-8 max-w-2xl text-pretty text-base leading-[1.82] text-zinc-600 sm:text-lg">
-              iCAM Video Telematics is a South African technology provider
-              specialising in video-enabled fleet telematics and vehicle
-              monitoring for commercial operators across transport, mining,
-              construction, logistics, and industrial sectors. The platform
-              unites advanced video, GPS tracking, telematics data, driver
-              behaviour analytics, AI-assisted safety monitoring, and business
-              intelligence—accessible through a unified ecosystem on web and
-              mobile devices.
+        <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-20">
+          <Reveal direction="left">
+            <SectionLabel>System Overview</SectionLabel>
+            <h2 className="mt-6 text-balance text-3xl font-semibold tracking-tight text-[color:var(--foreground)] sm:text-[2.55rem] lg:text-[3.1rem] lg:leading-[1.08]">
+              Integrated video telematics for{" "}
+              <span className="text-[color:var(--accent)]">commercial fleets</span>
+            </h2>
+            <p className="mt-8 max-w-2xl text-pretty text-base leading-[1.85] text-[color:var(--text-muted)] sm:text-lg">
+              iCAM Video Telematics is a proudly South African specialist that
+              supplies, installs, maintains and monitors vehicle video systems,
+              tracking &amp; telematics, ADAS/driver-fatigue systems, integrated
+              platforms, BI reporting, and monitoring &amp; recovery — for the
+              broader fleet, transport, construction and mining industries.
             </p>
-            <p className="mt-6 max-w-2xl text-pretty text-base leading-[1.82] text-zinc-600 sm:text-lg">
-              The result is not just more data points, but visual evidence and
-              context together—reducing ambiguity, improving response times, and
-              supporting proactive safety and operational decisions.
+            <p className="mt-6 max-w-2xl text-pretty text-base leading-[1.85] text-[color:var(--text-muted)] sm:text-lg">
+              The result isn&apos;t just more data points — it&apos;s visual
+              evidence and context together, reducing ambiguity and supporting
+              proactive safety and operational decisions.
             </p>
             <div className="mt-9 flex flex-wrap gap-2.5">
               {sectors.map((s) => (
                 <span
                   key={s}
-                  className="inline-flex rounded-full bg-white/85 px-3.5 py-1.5 text-xs font-medium text-zinc-700 shadow-[0_1px_8px_-6px_rgba(15,23,42,0.5)]"
+                  className="font-hud inline-flex rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3.5 py-1.5 text-[11px] uppercase tracking-[0.14em] text-[color:var(--text-muted)]"
                 >
                   {s}
                 </span>
@@ -204,69 +182,239 @@ export function MarketingSections() {
             <div className="mt-10 flex flex-wrap gap-3">
               <a
                 href="#services"
-                className="inline-flex items-center justify-center rounded-full bg-[color:var(--accent)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_-14px_rgba(9,0,136,0.75)] transition hover:bg-[color:var(--accent-bright)]"
+                className="inline-flex items-center justify-center rounded-md bg-[color:var(--accent)] px-6 py-3 text-sm font-semibold text-white shadow-[var(--shadow-accent)] transition hover:bg-[color:var(--accent-bright)]"
               >
-                Core products & systems
+                Explore the systems
               </a>
               <a
                 href="#contact"
-                className="inline-flex items-center justify-center rounded-full bg-white/90 px-5 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-white hover:text-zinc-900"
+                className="inline-flex items-center justify-center rounded-md border border-[color:var(--border-strong)] px-6 py-3 text-sm font-semibold text-[color:var(--foreground)] transition hover:bg-[color:var(--surface)]"
               >
-                Request a conversation
+                Talk to our team
               </a>
             </div>
-          </div>
+          </Reveal>
 
-          <aside className="space-y-4">
-            {pillars.map((p) => (
-              <div
+          <div className="space-y-4">
+            {pillars.map((p, i) => (
+              <ScrollReveal
                 key={p.label}
-                className="rounded-2xl bg-white/90 p-6 shadow-[0_16px_34px_-24px_rgba(15,23,42,0.55)] backdrop-blur-[2px]"
+                direction={i % 2 === 0 ? "right" : "left"}
+                distance={90}
+                className="hud-corners rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-6"
               >
-                <p className="text-sm font-semibold text-zinc-900">{p.label}</p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-600">
+                <p className="text-sm font-semibold text-[color:var(--foreground)]">
+                  {p.label}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-[color:var(--text-muted)]">
                   {p.text}
                 </p>
-              </div>
+              </ScrollReveal>
             ))}
-            <PlaceholderVisual title="Platform map & command center snapshot" />
-          </aside>
+          </div>
+        </div>
+
+        {/* live stats strip */}
+        <div className="mx-auto mt-16 grid max-w-6xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--border)] lg:grid-cols-4">
+          {STATS.map((s, i) => (
+            <ScrollReveal
+              key={s.label}
+              direction={i % 2 === 0 ? "left" : "right"}
+              distance={70}
+              className="bg-[color:var(--surface)] p-6"
+            >
+              <Counter
+                value={s.value}
+                className="font-hud text-3xl font-semibold text-[color:var(--foreground)] sm:text-4xl"
+              />
+              <p className="mt-2 text-sm font-medium text-[color:var(--accent)]">
+                {s.label}
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-[color:var(--text-faint)]">
+                {s.note}
+              </p>
+            </ScrollReveal>
+          ))}
         </div>
       </section>
 
+      {/* ---------- CORE SYSTEMS (pinned carousel) ---------- */}
       <section
         id="services"
         className="scroll-mt-24 border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-20 sm:px-8 sm:py-28"
       >
         <div className="mx-auto max-w-6xl">
-          <div className="max-w-3xl">
-            <SectionLabel>Core products & systems</SectionLabel>
-            <h2 className="mt-5 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-[2.5rem]">
-              Operational capabilities across vehicle types
+          <Reveal className="max-w-3xl">
+            <SectionLabel>Core Products &amp; Systems</SectionLabel>
+            <h2 className="mt-5 text-3xl font-semibold tracking-tight text-[color:var(--foreground)] sm:text-[2.5rem]">
+              One connected operating system for fleets
             </h2>
-            <p className="mt-5 text-base leading-[1.75] text-zinc-600 sm:text-lg">
-              From capture and tracking to safety analytics and recovery support,
-              each capability is designed to work as one connected operating
-              system for fleet teams.
+            <p className="mt-5 text-base leading-[1.8] text-[color:var(--text-muted)] sm:text-lg">
+              From capture and tracking to safety AI, BI reporting and recovery
+              support — each capability is designed to work together. Scroll
+              sideways through the stack.
             </p>
-          </div>
-
+          </Reveal>
           <ScrollLinkedServicesCarousel items={productSections} />
         </div>
       </section>
 
-      <section className="border-t border-[color:var(--border)] bg-[color:var(--background)] px-5 py-14 sm:px-8 sm:py-16">
+      {/* ---------- ADAS SAFETY BAND ---------- */}
+      <section className="overflow-hidden border-t border-[color:var(--border)] bg-[color:var(--bg-deep)] px-5 py-24 sm:px-8 sm:py-28">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
+          <Reveal direction="left">
+            <SectionLabel>AI Driver Safety</SectionLabel>
+            <h2 className="mt-5 text-3xl font-semibold tracking-tight text-[color:var(--foreground)] sm:text-[2.5rem]">
+              Warnings before incidents — not after
+            </h2>
+            <p className="mt-5 text-base leading-[1.8] text-[color:var(--text-muted)] sm:text-lg">
+              iCAM&apos;s on-board Fatigue &amp; ADAS cameras watch the road and
+              the driver, raising in-cab and control-room alerts the moment risk
+              appears.
+            </p>
+          </Reveal>
+          <div className="grid grid-cols-2 gap-3">
+            {adasFeatures.map((f, i) => {
+              const last = i === adasFeatures.length - 1;
+              return (
+                <ScrollReveal
+                  key={f}
+                  direction={last ? "up" : i % 2 === 0 ? "left" : "right"}
+                  distance={70}
+                  className={`rounded-xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 ${
+                    last ? "col-span-2" : ""
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="inline-block h-2 w-2 rounded-full bg-[color:var(--accent)]" />
+                    <span className="text-sm font-medium text-[color:var(--foreground)]">
+                      {f}
+                    </span>
+                  </div>
+                </ScrollReveal>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- SOLUTIONS TEASER ---------- */}
+      <section className="overflow-hidden border-t border-[color:var(--border)] bg-[color:var(--background)] px-5 py-20 sm:px-8 sm:py-28">
         <div className="mx-auto max-w-6xl">
-          <SectionLabel>Trusted by clients</SectionLabel>
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight text-zinc-900 sm:text-[2.15rem]">
-            Continuous deployments across transport, security, and heavy industry
-          </h2>
-          <div className="mt-8 overflow-hidden py-4">
+          <Reveal className="flex flex-wrap items-end justify-between gap-6">
+            <div className="max-w-2xl">
+              <SectionLabel>Solutions by Vehicle Type</SectionLabel>
+              <h2 className="mt-5 text-3xl font-semibold tracking-tight text-[color:var(--foreground)] sm:text-[2.5rem]">
+                Configured to how your fleet actually runs
+              </h2>
+            </div>
+            <Link
+              href="/solutions"
+              className="font-hud text-xs uppercase tracking-[0.2em] text-[color:var(--data-soft)] transition hover:text-[color:var(--accent)]"
+            >
+              View all solutions →
+            </Link>
+          </Reveal>
+
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {solutions
+              .filter((s) => s.slug !== "all")
+              .map((item, i) => (
+                <ScrollReveal
+                  key={item.slug}
+                  direction={i % 2 === 0 ? "left" : "right"}
+                  distance={90}
+                >
+                  <Link
+                    href={`/solutions/${item.slug}`}
+                    className="hud-corners group block overflow-hidden rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] transition hover:-translate-y-1 hover:border-[color:var(--accent)]"
+                  >
+                    <div className="relative aspect-[16/10] overflow-hidden bg-[color:var(--surface-elevated)]">
+                      <Image
+                        src={item.imageSrc}
+                        alt={item.imageAlt}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                      />
+                      <div className="pointer-events-none absolute inset-0 hud-grid opacity-40" />
+                    </div>
+                    <div className="flex items-center justify-between p-5">
+                      <span className="text-base font-semibold text-[color:var(--foreground)]">
+                        {item.name}
+                      </span>
+                      <span className="font-hud text-xs text-[color:var(--text-faint)] transition group-hover:text-[color:var(--accent)]">
+                        OPEN →
+                      </span>
+                    </div>
+                  </Link>
+                </ScrollReveal>
+              ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- OPERATIONS ---------- */}
+      <section
+        className="overflow-hidden border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-20 sm:px-8 sm:py-24"
+        aria-labelledby="ops-heading"
+      >
+        <div className="mx-auto max-w-6xl">
+          <Reveal>
+            <SectionLabel>Operations &amp; Support</SectionLabel>
+            <h2
+              id="ops-heading"
+              className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-[color:var(--foreground)] sm:text-4xl"
+            >
+              Built for heavy industry, backed 24/7
+            </h2>
+          </Reveal>
+          <div className="mt-12 space-y-6">
+            {operationsBands.map((band, i) => (
+              <ScrollReveal key={band.title} direction={i % 2 === 0 ? "left" : "right"} distance={90}>
+                <article className="hud-corners grid gap-6 rounded-2xl border border-[color:var(--border)] bg-[color:var(--background)] p-7 sm:p-9 lg:grid-cols-[0.4fr_0.6fr] lg:gap-10">
+                  <div>
+                    <span className="font-hud text-xs tabular-nums text-[color:var(--data-soft)]">
+                      0{i + 1}
+                    </span>
+                    <h3 className="mt-3 text-2xl font-semibold tracking-tight text-[color:var(--foreground)]">
+                      {band.title}
+                    </h3>
+                    <p className="mt-4 text-sm leading-[1.8] text-[color:var(--text-muted)]">
+                      {band.text}
+                    </p>
+                  </div>
+                  <ul className="grid content-center gap-3">
+                    {band.points.map((line) => (
+                      <li
+                        key={line}
+                        className="flex gap-3 text-sm leading-relaxed text-[color:var(--text-muted)]"
+                      >
+                        <span
+                          className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--accent)]"
+                          aria-hidden
+                        />
+                        <span>{line}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------- CLIENTS MARQUEE ---------- */}
+      <section className="border-t border-[color:var(--border)] bg-[color:var(--background)] px-5 py-16 sm:px-8">
+        <div className="mx-auto max-w-6xl">
+          <SectionLabel>Trusted across heavy industry</SectionLabel>
+          <div className="mt-8 overflow-hidden py-2">
             <div className="client-marquee-track">
               {[...clientLogos, ...clientLogos].map((name, i) => (
                 <div
                   key={`${name}-${i}`}
-                  className="mx-2 inline-flex min-w-[10.5rem] items-center justify-center rounded-lg bg-white/85 px-4 py-3 text-sm font-medium text-zinc-600"
+                  className="font-hud mx-2 inline-flex min-w-[10.5rem] items-center justify-center rounded-lg border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 text-xs uppercase tracking-[0.12em] text-[color:var(--text-faint)]"
                 >
                   {name}
                 </div>
@@ -276,155 +424,93 @@ export function MarketingSections() {
         </div>
       </section>
 
-      <section
-        className="border-t border-[color:var(--border)] bg-[linear-gradient(180deg,var(--surface-elevated),#f5f4f1)] px-5 py-20 sm:px-8 sm:py-24"
-        aria-labelledby="ops-heading"
-      >
-        <div className="mx-auto max-w-6xl">
-          <SectionLabel>Operations & support</SectionLabel>
-          <h2
-            id="ops-heading"
-            className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl"
-          >
-            Alternating two-column operational depth
-          </h2>
-          <div className="mt-12 space-y-6">
-            {operationsBands.map((band, i) => (
-              <article
-                key={band.title}
-                className={`grid gap-6 rounded-2xl p-6 shadow-[0_16px_36px_-24px_rgba(15,23,42,0.45)] sm:p-8 lg:grid-cols-2 lg:gap-10 ${
-                  i % 2 === 0 ? "bg-white" : "bg-zinc-950 text-zinc-100"
-                }`}
-              >
-                <div className={i % 2 === 0 ? "" : "lg:order-2"}>
-                  <h3
-                    className={`text-2xl font-semibold tracking-tight ${
-                      i % 2 === 0 ? "text-zinc-900" : "text-white"
-                    }`}
-                  >
-                    {band.title}
-                  </h3>
-                  <p
-                    className={`mt-4 text-sm leading-[1.8] ${
-                      i % 2 === 0 ? "text-zinc-600" : "text-zinc-300"
-                    }`}
-                  >
-                    {band.text}
-                  </p>
-                  <ul className="mt-5 space-y-3">
-                    {band.points.map((line) => (
-                      <li
-                        key={line}
-                        className={`flex gap-3 text-sm leading-relaxed ${
-                          i % 2 === 0 ? "text-zinc-700" : "text-zinc-300"
-                        }`}
-                      >
-                        <span
-                          className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${
-                            i % 2 === 0
-                              ? "bg-[color:var(--accent)]"
-                              : "bg-[color:var(--accent-on-dark)]"
-                          }`}
-                          aria-hidden
-                        />
-                        <span>{line}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className={i % 2 === 0 ? "" : "lg:order-1"}>
-                  <PlaceholderVisual title={`${band.title} schematic placeholder`} />
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-t border-zinc-800 bg-[radial-gradient(circle_at_80%_20%,rgba(113,113,255,0.16),transparent_40%),#09090b] px-5 py-16 text-zinc-100 sm:px-8 sm:py-20">
-        <div className="mx-auto max-w-6xl">
-          <SectionLabel>Proof points</SectionLabel>
-          <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {proofCards.map((card) => (
-              <article
-                key={card.label}
-                className="rounded-xl bg-zinc-900/70 p-5 shadow-[0_12px_28px_-22px_rgba(159,159,255,0.65)] backdrop-blur-sm"
-              >
-                <p className="text-xs uppercase tracking-[0.15em] text-zinc-400">
-                  {card.label}
-                </p>
-                <p className="mt-3 text-2xl font-semibold text-white">
-                  {card.value}
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  {card.note}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
+      {/* ---------- CONTACT ---------- */}
       <section
         id="contact"
-        className="scroll-mt-24 border-t border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-5 py-20 sm:px-8 sm:py-28"
+        className="scroll-mt-24 border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 py-24 sm:px-8 sm:py-32"
       >
-        <div className="mx-auto max-w-2xl text-center">
-          <SectionLabel>Contact</SectionLabel>
-          <h2 className="mt-5 text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
-            Speak with our team
-          </h2>
-          <p className="mt-6 text-base leading-relaxed text-zinc-600 sm:text-lg">
-            Share your fleet profile, sectors, and regions—we&apos;ll help you
-            scope cameras, tracking hardware, integrations, and rollout for
-            South African and cross-border operations.
-          </p>
-          <a
-            href="mailto:hello@icamvideo.com"
-            className="mt-10 inline-flex items-center justify-center rounded-full bg-[color:var(--accent)] px-10 py-3.5 text-sm font-semibold text-white shadow-[0_12px_28px_-18px_rgba(9,0,136,0.8)] transition hover:bg-[color:var(--accent-bright)]"
-          >
-            hello@icamvideo.com
-          </a>
-          <p className="mt-4 text-xs text-zinc-500">
-            Typical response within two business days.
-          </p>
+        <div className="mx-auto max-w-3xl text-center">
+          <Reveal>
+            <SectionLabel>Get In Touch</SectionLabel>
+            <h2 className="mt-5 text-3xl font-semibold tracking-tight text-[color:var(--foreground)] sm:text-[2.7rem]">
+              {TAGLINE}.
+            </h2>
+            <p className="mt-6 text-base leading-[1.8] text-[color:var(--text-muted)] sm:text-lg">
+              Share your fleet profile, sectors and regions — we&apos;ll help you
+              scope cameras, tracking hardware, ADAS, integrations and rollout
+              across South African and cross-border operations.
+            </p>
+          </Reveal>
+
+          <Reveal delay={0.1} className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href={`mailto:${CONTACT.email}`}
+              className="inline-flex items-center justify-center rounded-md bg-[color:var(--accent)] px-8 py-3.5 text-sm font-semibold text-white shadow-[var(--shadow-accent)] transition hover:bg-[color:var(--accent-bright)]"
+            >
+              {CONTACT.email}
+            </a>
+            <a
+              href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}
+              className="font-hud inline-flex items-center justify-center rounded-md border border-[color:var(--border-strong)] px-8 py-3.5 text-sm font-semibold text-[color:var(--foreground)] transition hover:bg-[color:var(--background)]"
+            >
+              {CONTACT.phone}
+            </a>
+          </Reveal>
+
+          <Reveal delay={0.16} className="mt-8 text-sm leading-relaxed text-[color:var(--text-faint)]">
+            {CONTACT.addressLines.map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </Reveal>
         </div>
       </section>
 
-      <footer className="border-t border-zinc-800 bg-zinc-950 px-5 py-12 sm:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex shrink-0" aria-hidden>
-                <BrandLogo
-                  className="h-10 w-auto sm:h-11"
-                  alt=""
-                  priority={false}
-                />
-              </span>
-              <span className="text-sm font-semibold text-white">
-                iCAM Video Telematics
-              </span>
-            </div>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-500">
-              South African provider of integrated video telematics, GPS
-              tracking, AI-assisted safety, and fleet intelligence for transport,
-              mining, construction, logistics, and industry.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 text-sm text-zinc-500 sm:items-end">
-            <a
-              href="mailto:hello@icamvideo.com"
-              className="text-zinc-400 transition hover:text-white"
-            >
-              hello@icamvideo.com
-            </a>
-            <span className="text-zinc-600">
-              © {new Date().getFullYear()} iCAM Video. All rights reserved.
+      <SiteFooter />
+    </>
+  );
+}
+
+export function SiteFooter() {
+  return (
+    <footer className="border-t border-[color:var(--border)] bg-[color:var(--bg-deep)] px-5 py-12 sm:px-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+        <div className="max-w-md">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex shrink-0" aria-hidden>
+              <BrandLogo className="h-10 w-auto sm:h-11" alt="" priority={false} />
+            </span>
+            <span className="text-sm font-semibold text-[color:var(--foreground)]">
+              iCAM Video Telematics
             </span>
           </div>
+          <p className="mt-3 text-sm leading-relaxed text-[color:var(--text-faint)]">
+            Proudly South African provider of integrated video telematics, GPS
+            tracking, ADAS/driver-fatigue AI, BI reporting and 24/7 monitoring
+            for transport, mining, construction, logistics and industry.
+          </p>
         </div>
-      </footer>
-    </>
+        <div className="flex flex-col gap-2 text-sm text-[color:var(--text-faint)] sm:items-end sm:text-right">
+          <a
+            href={`mailto:${CONTACT.email}`}
+            className="text-[color:var(--text-muted)] transition hover:text-[color:var(--foreground)]"
+          >
+            {CONTACT.email}
+          </a>
+          <a
+            href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}
+            className="font-hud transition hover:text-[color:var(--foreground)]"
+          >
+            {CONTACT.phone} · {CONTACT.phoneAlt}
+          </a>
+          {CONTACT.addressLines.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+          <span className="mt-2 opacity-70">
+            © {new Date().getFullYear()} iCAM Video Telematics. All rights
+            reserved.
+          </span>
+        </div>
+      </div>
+    </footer>
   );
 }

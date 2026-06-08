@@ -1,6 +1,7 @@
 "use client";
 
 import { BrandLogo } from "@/components/BrandLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
@@ -28,25 +29,30 @@ function ChevronDown({ className, open }: { className?: string; open?: boolean }
 }
 
 const linkClass =
-  "flex items-center gap-1 text-[13px] font-medium text-zinc-300 transition-colors hover:text-white";
+  "flex items-center gap-1 text-[13px] font-medium text-[color:var(--nav-text)] transition-colors hover:text-[color:var(--nav-text-strong)]";
 
 type FlyoutItem = { href: string; title: string; description: string };
 
 const platformItems: FlyoutItem[] = [
   {
-    href: "/solutions/fuel-tanker",
-    title: "Video telematics",
-    description: "In-cab capture, cloud retention, and structured review",
+    href: "/#video-telematics",
+    title: "Vehicle Video Systems",
+    description: "1–16 channel HD MDVR with GPS, 4G and live streaming",
   },
   {
-    href: "/solutions/all",
-    title: "Fleet tracking",
-    description: "Live GPS, routes, and a single operational picture",
+    href: "/#tracking-hardware",
+    title: "Tracking & Telematics",
+    description: "GPS, CANBUS, fuel & temperature, driver ID and trailers",
   },
   {
-    href: "/solutions/ambulance-security",
-    title: "Driver safety",
-    description: "AI-assisted signals, prioritised alerts, coaching workflows",
+    href: "/#adas-safety",
+    title: "Driver Fatigue & ADAS",
+    description: "Fatigue, distraction, collision and pedestrian AI alerts",
+  },
+  {
+    href: "/#analytics-reporting",
+    title: "Platform, Reports & BI",
+    description: "Web/desktop/mobile, 450+ reports and driver scoring",
   },
 ];
 
@@ -54,17 +60,17 @@ const solutionsItems: FlyoutItem[] = [
   {
     href: "/solutions",
     title: "All solutions",
-    description: "Vehicle categories and deployment-specific solution sets",
+    description: "Every vehicle category and deployment-specific set",
   },
   {
-    href: "/solutions/all",
-    title: "Fleet operators",
-    description: "Regional and mixed fleets with clear day-to-day workflows",
+    href: "/solutions/fuel-tanker",
+    title: "Fuel Tanker",
+    description: "Tanker-specific video, sensors and telematics layout",
   },
   {
-    href: "/solutions/all",
-    title: "Enterprise",
-    description: "Scale, roles, and reporting for distributed organisations",
+    href: "/solutions/yellow-metal-mining",
+    title: "Yellow Metal / Mining",
+    description: "Built for harsh routes and heavy-industry duty cycles",
   },
 ];
 
@@ -83,16 +89,16 @@ function FlyoutPanel({
     <div
       id={id}
       role="menu"
-      className="absolute left-0 top-[calc(100%+10px)] z-[80] w-[min(calc(100vw-2rem),320px)] overflow-hidden rounded-xl border border-zinc-600/50 bg-zinc-900/98 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/5 backdrop-blur-xl"
+      className="absolute left-0 top-[calc(100%+10px)] z-[80] w-[min(calc(100vw-2rem),320px)] overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--nav-dropdown)] shadow-[var(--shadow-soft)] backdrop-blur-xl"
     >
-      <div className="border-b border-zinc-700/60 bg-zinc-950/80 px-4 py-3">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+      <div className="border-b border-[color:var(--border)] bg-[color:var(--surface-elevated)] px-4 py-3">
+        <p className="font-hud text-[10px] font-semibold uppercase tracking-[0.2em] text-[color:var(--text-faint)]">
           {label}
         </p>
-        <p className="mt-1 text-xs leading-snug text-zinc-400">
-          {label === "Platform"
-            ? "Core capabilities across capture, location, and safety."
-            : "How we support different fleet operating models."}
+        <p className="mt-1 text-xs leading-snug text-[color:var(--text-muted)]">
+          {label === "Products"
+            ? "Capture, location, safety AI, platform and reporting."
+            : "Telematics configured by vehicle and fleet type."}
         </p>
       </div>
       <ul className="p-2">
@@ -101,15 +107,15 @@ function FlyoutPanel({
             <Link
               href={item.href}
               role="menuitem"
-              className="group block rounded-lg px-3 py-3 transition-colors hover:bg-white/[0.06]"
+              className="group block rounded-lg px-3 py-3 transition-colors hover:bg-[color:var(--surface-elevated)]"
               onClick={onNavigate}
             >
               <span className="flex items-start justify-between gap-2">
-                <span className="text-[13px] font-semibold text-white group-hover:text-[color:var(--accent-on-dark)]">
+                <span className="text-[13px] font-semibold text-[color:var(--nav-text-strong)] group-hover:text-[color:var(--accent)]">
                   {item.title}
                 </span>
                 <svg
-                  className="mt-0.5 h-4 w-4 shrink-0 text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100"
+                  className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--text-faint)] opacity-0 transition-opacity group-hover:opacity-100"
                   viewBox="0 0 16 16"
                   fill="none"
                   aria-hidden
@@ -123,7 +129,7 @@ function FlyoutPanel({
                   />
                 </svg>
               </span>
-              <span className="mt-1 block text-[12px] leading-relaxed text-zinc-500 group-hover:text-zinc-400">
+              <span className="mt-1 block text-[12px] leading-relaxed text-[color:var(--text-faint)] group-hover:text-[color:var(--text-muted)]">
                 {item.description}
               </span>
             </Link>
@@ -135,7 +141,7 @@ function FlyoutPanel({
 }
 
 const mobileLinkClass =
-  "block py-3 text-[15px] font-medium text-zinc-200 transition-colors hover:text-white";
+  "block py-3 text-[15px] font-medium text-[color:var(--nav-text)] transition-colors hover:text-[color:var(--nav-text-strong)]";
 
 export function SiteNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -212,7 +218,7 @@ export function SiteNav() {
           <div className="mx-auto flex h-[3.25rem] max-w-6xl items-center justify-between gap-3 px-4 sm:h-14 sm:px-6 lg:px-8">
             <Link
               href="/#overview"
-              className="flex shrink-0 items-center gap-2.5 text-white"
+              className="flex shrink-0 items-center gap-2.5 text-[color:var(--nav-text-strong)]"
               aria-label="iCAM Video Telematics, home"
               onClick={() => {
                 closeMobile();
@@ -232,19 +238,19 @@ export function SiteNav() {
               <div className="relative px-3">
                 <button
                   type="button"
-                  className={`${linkClass} rounded-md px-1 py-1.5 outline-none ring-[color:var(--accent)] focus-visible:ring-2 ${deskMenu === "platform" ? "text-white" : ""}`}
+                  className={`${linkClass} rounded-md px-1 py-1.5 outline-none ring-[color:var(--accent)] focus-visible:ring-2 ${deskMenu === "platform" ? "text-[color:var(--nav-text-strong)]" : ""}`}
                   aria-expanded={deskMenu === "platform"}
                   aria-haspopup="menu"
                   aria-controls={platformMenuId}
                   onClick={() => toggleDesk("platform")}
                 >
-                  Platform
+                  Products
                   <ChevronDown open={deskMenu === "platform"} />
                 </button>
                 {deskMenu === "platform" ? (
                   <FlyoutPanel
                     id={platformMenuId}
-                    label="Platform"
+                    label="Products"
                     items={platformItems}
                     onNavigate={closeDesk}
                   />
@@ -254,7 +260,7 @@ export function SiteNav() {
               <div className="relative px-3">
                 <button
                   type="button"
-                  className={`${linkClass} rounded-md px-1 py-1.5 outline-none ring-[color:var(--accent)] focus-visible:ring-2 ${deskMenu === "solutions" ? "text-white" : ""}`}
+                  className={`${linkClass} rounded-md px-1 py-1.5 outline-none ring-[color:var(--accent)] focus-visible:ring-2 ${deskMenu === "solutions" ? "text-[color:var(--nav-text-strong)]" : ""}`}
                   aria-expanded={deskMenu === "solutions"}
                   aria-haspopup="menu"
                   aria-controls={solutionsMenuId}
@@ -274,14 +280,14 @@ export function SiteNav() {
               </div>
 
               <Link
-                href="/solutions"
+                href="/#services"
                 className={`${linkClass} px-3 py-1.5`}
                 onClick={closeDesk}
               >
-                Resources
+                Services
               </Link>
               <Link
-                href="/solutions/all"
+                href="/#overview"
                 className={`${linkClass} px-3 py-1.5`}
                 onClick={closeDesk}
               >
@@ -289,10 +295,11 @@ export function SiteNav() {
               </Link>
             </nav>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <ThemeToggle />
               <Link
                 href="/#contact"
-                className="hidden items-center bg-[color:var(--accent)] px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-white shadow-sm transition-colors hover:bg-[color:var(--accent-bright)] sm:inline-flex"
+                className="hidden items-center rounded-md bg-[color:var(--accent)] px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.1em] text-white transition-colors hover:bg-[color:var(--accent-bright)] sm:inline-flex"
                 onClick={() => {
                   closeMobile();
                   closeDesk();
@@ -302,7 +309,7 @@ export function SiteNav() {
               </Link>
               <button
                 type="button"
-                className="flex h-10 w-10 items-center justify-center text-zinc-200 transition-colors hover:bg-white/5 lg:hidden"
+                className="flex h-10 w-10 items-center justify-center text-[color:var(--nav-text)] transition-colors hover:bg-[color:var(--border)] lg:hidden"
                 aria-expanded={mobileOpen}
                 aria-controls="mobile-menu"
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -310,34 +317,12 @@ export function SiteNav() {
               >
                 <span className="sr-only">Menu</span>
                 {mobileOpen ? (
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden
-                  >
-                    <path
-                      d="M6 6L18 18M18 6L6 18"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                 ) : (
-                  <svg
-                    width="18"
-                    height="18"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden
-                  >
-                    <path
-                      d="M4 7H20M4 12H20M4 17H20"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M4 7H20M4 12H20M4 17H20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                 )}
               </button>
@@ -362,65 +347,45 @@ export function SiteNav() {
           />
           <div className="pointer-events-none absolute inset-0 flex items-start justify-end p-4 pt-[4.5rem] sm:p-6 sm:pt-[4.75rem]">
             <div
-              className="pointer-events-auto max-h-[min(100dvh-5rem,640px)] w-full max-w-[min(100%,22rem)] overflow-y-auto border border-zinc-700/80 bg-[color:var(--nav-sheet)] shadow-2xl shadow-black/50"
+              className="pointer-events-auto max-h-[min(100dvh-5rem,640px)] w-full max-w-[min(100%,22rem)] overflow-y-auto rounded-xl border border-[color:var(--border)] bg-[color:var(--nav-sheet)] shadow-[var(--shadow-soft)]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between gap-4 border-b border-zinc-700/60 p-5 pb-4">
+              <div className="flex items-center justify-between gap-4 border-b border-[color:var(--border)] p-5 pb-4">
                 <Link
                   href="/#overview"
-                  className="flex items-center gap-2.5 text-white"
+                  className="flex items-center gap-2.5 text-[color:var(--nav-text-strong)]"
                   aria-label="iCAM Video Telematics, home"
                   onClick={closeMobile}
                 >
-                  <BrandLogo
-                    className="h-8 w-auto shrink-0"
-                    alt=""
-                    priority={false}
-                  />
+                  <BrandLogo className="h-8 w-auto shrink-0" alt="" priority={false} />
                   <span className="text-base font-semibold tracking-tight">
                     iCAM Video
                   </span>
                 </Link>
                 <button
                   type="button"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center text-zinc-200 transition-colors hover:bg-white/5"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center text-[color:var(--nav-text)] transition-colors hover:bg-[color:var(--border)]"
                   aria-label="Close menu"
                   onClick={closeMobile}
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    aria-hidden
-                  >
-                    <path
-                      d="M6 6L18 18M18 6L6 18"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path d="M6 6L18 18M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                 </button>
               </div>
 
               <nav className="flex flex-col px-5 pb-2" aria-label="Mobile">
-                <div className="border-b border-zinc-700/50">
+                <div className="border-b border-[color:var(--border)]">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between py-3 text-left text-[15px] font-medium text-white"
+                    className="flex w-full items-center justify-between py-3 text-left text-[15px] font-medium text-[color:var(--nav-text-strong)]"
                     aria-expanded={mobileSub === "platform"}
                     onClick={() =>
-                      setMobileSub((s) =>
-                        s === "platform" ? null : "platform"
-                      )
+                      setMobileSub((s) => (s === "platform" ? null : "platform"))
                     }
                   >
-                    Platform
-                    <ChevronDown
-                      className="text-zinc-400"
-                      open={mobileSub === "platform"}
-                    />
+                    Products
+                    <ChevronDown className="text-[color:var(--text-faint)]" open={mobileSub === "platform"} />
                   </button>
                   {mobileSub === "platform" ? (
                     <ul className="space-y-1 pb-4 pl-1">
@@ -428,7 +393,7 @@ export function SiteNav() {
                         <li key={item.title}>
                           <Link
                             href={item.href}
-                            className="block rounded-lg py-2 pl-3 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
+                            className="block rounded-lg py-2 pl-3 text-sm text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-elevated)] hover:text-[color:var(--nav-text-strong)]"
                             onClick={closeMobile}
                           >
                             {item.title}
@@ -439,22 +404,17 @@ export function SiteNav() {
                   ) : null}
                 </div>
 
-                <div className="border-b border-zinc-700/50">
+                <div className="border-b border-[color:var(--border)]">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between py-3 text-left text-[15px] font-medium text-white"
+                    className="flex w-full items-center justify-between py-3 text-left text-[15px] font-medium text-[color:var(--nav-text-strong)]"
                     aria-expanded={mobileSub === "solutions"}
                     onClick={() =>
-                      setMobileSub((s) =>
-                        s === "solutions" ? null : "solutions"
-                      )
+                      setMobileSub((s) => (s === "solutions" ? null : "solutions"))
                     }
                   >
                     Solutions
-                    <ChevronDown
-                      className="text-zinc-400"
-                      open={mobileSub === "solutions"}
-                    />
+                    <ChevronDown className="text-[color:var(--text-faint)]" open={mobileSub === "solutions"} />
                   </button>
                   {mobileSub === "solutions" ? (
                     <ul className="space-y-1 pb-4 pl-1">
@@ -462,7 +422,7 @@ export function SiteNav() {
                         <li key={item.title}>
                           <Link
                             href={item.href}
-                            className="block rounded-lg py-2 pl-3 text-sm text-zinc-400 transition-colors hover:bg-white/5 hover:text-white"
+                            className="block rounded-lg py-2 pl-3 text-sm text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-elevated)] hover:text-[color:var(--nav-text-strong)]"
                             onClick={closeMobile}
                           >
                             {item.title}
@@ -474,25 +434,26 @@ export function SiteNav() {
                 </div>
 
                 <Link
-                  href="/solutions"
-                  className={`${mobileLinkClass} border-b border-zinc-700/50`}
+                  href="/#services"
+                  className={`${mobileLinkClass} border-b border-[color:var(--border)]`}
                   onClick={closeMobile}
                 >
-                  Resources
+                  Services
                 </Link>
-                <Link href="/solutions/all" className={mobileLinkClass} onClick={closeMobile}>
+                <Link href="/#overview" className={mobileLinkClass} onClick={closeMobile}>
                   About
                 </Link>
               </nav>
 
-              <div className="p-5 pt-2">
+              <div className="flex items-center gap-2 p-5 pt-2">
                 <Link
                   href="/#contact"
-                  className="flex w-full items-center justify-center bg-[color:var(--accent)] py-3.5 text-xs font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[color:var(--accent-bright)]"
+                  className="flex flex-1 items-center justify-center rounded-md bg-[color:var(--accent)] py-3.5 text-xs font-semibold uppercase tracking-[0.12em] text-white transition-colors hover:bg-[color:var(--accent-bright)]"
                   onClick={closeMobile}
                 >
                   Contact
                 </Link>
+                <ThemeToggle className="h-12 w-12 border border-[color:var(--border)]" />
               </div>
             </div>
           </div>

@@ -1,5 +1,5 @@
-import { BrandLogo } from "@/components/BrandLogo";
 import { FuelTankerInteractive } from "@/components/FuelTankerInteractive";
+import { SiteFooter } from "@/components/MarketingSections";
 import { SiteNav } from "@/components/SiteNav";
 import { getSolutionBySlug, solutions } from "@/lib/solutions";
 import { notFound } from "next/navigation";
@@ -15,65 +15,42 @@ export default async function SolutionInteractivePage({ params }: Props) {
   if (!solution) notFound();
 
   return (
-    <main className="min-h-dvh bg-[color:var(--background)] text-zinc-900">
+    <main className="min-h-dvh bg-[color:var(--background)] text-[color:var(--foreground)]">
       <SiteNav />
 
-      <section className="border-b border-[color:var(--border)] bg-[color:var(--surface)] px-5 pb-14 pt-32 sm:px-8 sm:pt-36">
-        <div className="mx-auto max-w-6xl">
+      <section className="relative overflow-hidden border-b border-[color:var(--border)] bg-[color:var(--surface)] px-5 pb-14 pt-32 sm:px-8 sm:pt-40">
+        <div className="pointer-events-none absolute inset-0 hud-grid opacity-40" />
+        <div className="relative mx-auto max-w-6xl">
           <Link
             href="/solutions"
-            className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500 transition hover:text-zinc-800"
+            className="font-hud text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--text-faint)] transition hover:text-[color:var(--foreground)]"
           >
             ← Back to solutions
           </Link>
-          <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--accent)]">
+          <p className="mt-4 font-hud text-[11px] font-semibold uppercase tracking-[0.28em] text-[color:var(--data-soft)]">
             {solution.name}
           </p>
-          <h1 className="mt-3 max-w-3xl text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
+          <h1 className="mt-3 max-w-3xl text-balance text-3xl font-semibold tracking-tight text-[color:var(--foreground)] sm:text-4xl">
             Interactive telematics layout
           </h1>
-          <p className="mt-5 max-w-3xl text-base leading-[1.75] text-zinc-600 sm:text-lg">
-            Click the circular hotspots on the layout to explore key modules and
-            capabilities for this solution profile.
+          <p className="mt-5 max-w-3xl text-base leading-[1.8] text-[color:var(--text-muted)] sm:text-lg">
+            Click the circular hotspots on the layout to explore the key modules
+            and capabilities for this solution profile.
           </p>
         </div>
       </section>
 
       <section className="px-5 py-12 sm:px-8 sm:py-16">
         <div className="mx-auto max-w-6xl">
-          <FuelTankerInteractive />
+          <FuelTankerInteractive
+            imageSrc={solution.imageSrc}
+            imageAlt={solution.imageAlt}
+            name={solution.name}
+          />
         </div>
       </section>
 
-      <footer className="border-t border-zinc-800 bg-zinc-950 px-5 py-12 sm:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="inline-flex shrink-0" aria-hidden>
-                <BrandLogo className="h-10 w-auto sm:h-11" alt="" priority={false} />
-              </span>
-              <span className="text-sm font-semibold text-white">
-                iCAM Video Telematics
-              </span>
-            </div>
-            <p className="mt-2 max-w-md text-sm leading-relaxed text-zinc-500">
-              South African provider of integrated video telematics, GPS tracking,
-              AI-assisted safety, and fleet intelligence.
-            </p>
-          </div>
-          <div className="flex flex-col gap-4 text-sm text-zinc-500 sm:items-end">
-            <a
-              href="mailto:hello@icamvideo.com"
-              className="text-zinc-400 transition hover:text-white"
-            >
-              hello@icamvideo.com
-            </a>
-            <span className="text-zinc-600">
-              © {new Date().getFullYear()} iCAM Video. All rights reserved.
-            </span>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </main>
   );
 }
