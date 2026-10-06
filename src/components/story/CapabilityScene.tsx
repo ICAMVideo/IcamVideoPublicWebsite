@@ -17,9 +17,9 @@ const STEPS: Step[] = [
   {
     n: "01",
     verb: "Fatigue",
-    title: "Fatigue, caught in time.",
-    body: "We spot a drowsy or distracted driver and act before it becomes a crash.",
-    specs: ["Driver safety", "Fewer incidents"],
+    title: "AI that catches fatigue in time.",
+    body: "On-board AI cameras read the driver — drowsiness, distraction, phone use — and act before it becomes a crash.",
+    specs: ["AI vision", "Fewer incidents"],
     img: "/story/see.webp",
     alt: "View from inside a truck cab at dusk",
   },

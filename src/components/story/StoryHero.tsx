@@ -58,8 +58,8 @@ export function StoryHero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 1, duration: 0.9, ease: [0.23, 1, 0.32, 1] }}
           >
-            Fatigue, fuel loss and road risk — managed for the fleets that keep
-            Southern Africa moving.
+            AI driver safety, fuel-loss protection and risk — managed for the
+            fleets that keep Southern Africa moving.
           </motion.p>
         </div>
       </motion.div>

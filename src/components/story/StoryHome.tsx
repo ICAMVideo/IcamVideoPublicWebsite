@@ -57,8 +57,9 @@ export function StoryHome() {
           </h2>
           <Reveal delay={0.12}>
             <p className="measure mt-10 text-xl leading-relaxed text-[color:var(--ink-2)]">
-              iCAM runs the safety, security and risk layer for your fleet — as a
-              managed service, not another device to babysit.
+              iCAM runs the safety, security and risk layer for your fleet — AI
+              on the cameras, our bureau on the alerts — as a managed service,
+              not another device to babysit.
             </p>
           </Reveal>
         </div>
