@@ -1,5 +1,5 @@
-import { HomeExperience } from "@/components/HomeExperience";
+import { StoryHome } from "@/components/story/StoryHome";
 
 export default function Home() {
-  return <HomeExperience />;
+  return <StoryHome />;
 }

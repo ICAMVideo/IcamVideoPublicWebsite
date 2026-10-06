@@ -1,0 +1,45 @@
+{
+  "name": "iCAM Video Telematics — Editorial Light",
+  "mode": "persuade",
+  "theme": "light",
+  "color": {
+    "paper": "#f6f3ec",
+    "paper-2": "#efe9dd",
+    "paper-3": "#e7e0d1",
+    "ink": "#17140d",
+    "ink-2": "#4c463b",
+    "ink-3": "#8a8173",
+    "line": "rgba(23,20,13,0.13)",
+    "line-2": "rgba(23,20,13,0.24)",
+    "accent": "#090088",
+    "accent-2": "#1613b0",
+    "on-image": "#f7f4ed"
+  },
+  "colorStrategy": "restrained-single-accent",
+  "typography": {
+    "display": { "family": "Libre Caslon Display", "weights": [400], "tracking": "-0.02em", "maxSize": "6rem" },
+    "sans": { "family": "Hanken Grotesk", "weights": [400, 500, 600, 700], "measure": "66ch" },
+    "mono": { "family": "IBM Plex Mono", "weights": [400, 500] }
+  },
+  "radius": { "default": "0px", "focus": "2px" },
+  "shadow": {
+    "image": "0 24px 60px -34px rgba(23,20,13,0.45)",
+    "soft": "0 12px 34px -26px rgba(23,20,13,0.4)"
+  },
+  "space": { "container": "1400px", "gutter": ["1.25rem", "2rem", "3rem"], "sectionY": "clamp(5rem,12vh,9rem)" },
+  "motion": {
+    "ease": "cubic-bezier(0.23,1,0.32,1)",
+    "easeInOut": "cubic-bezier(0.77,0,0.175,1)",
+    "smoothScroll": "lenis",
+    "signature": "sticky cross-fade capability scene; scroll-linked parallax; clip-path line reveals; count-ups",
+    "reducedMotion": true
+  },
+  "principles": [
+    "image-led scrollytelling, not feature cards",
+    "no eyebrow kickers, no gradient text, no glass, no cards-as-structure",
+    "single deep-navy accent on warm paper",
+    "serif display + grotesque text",
+    "square corners, hairlines, generous whitespace"
+  ],
+  "surfaces": { "home": "src/app/page.tsx", "components": "src/components/story/" }
+}

@@ -1,249 +1,138 @@
 @import "tailwindcss";
 @import "lenis/dist/lenis.css";
-@import "maplibre-gl/dist/maplibre-gl.css";
 
 /*
-  iCAM Video Telematics — design system.
-  Dark-blue, solid-colour palette (minimal gradients). Light + dark themes via
-  the `.light` class on <html>. Components read CSS variables so they flip.
+  iCAM Video Telematics — editorial light world.
+  Warm paper ground, warm near-black ink, one iCAM-blue accent.
+  Display: Libre Caslon Display (serif). Text/UI: Hanken Grotesk.
 */
 
-/* ---- DARK (default) ---- */
 :root {
-  --background: #070b1a;     /* deep navy */
-  --bg-deep: #050814;
-  --surface: #0d1430;        /* dark blue surface */
-  --surface-elevated: #141d40;
-  --surface-glass: rgba(13, 20, 48, 0.66);
-  --foreground: #eef1fb;
-  --border: rgba(255, 255, 255, 0.10);
-  --border-strong: rgba(255, 255, 255, 0.20);
+  --paper: #f6f3ec;
+  --paper-2: #efe9dd;
+  --paper-3: #e7e0d1;
+  --ink: #17140d;
+  --ink-2: #4c463b; /* muted body — warm, never gray */
+  --ink-3: #8a8173; /* captions */
+  --line: rgba(23, 20, 13, 0.13);
+  --line-2: rgba(23, 20, 13, 0.24);
 
-  --text-muted: #9aa4c6;
-  --text-faint: #6b76a0;
+  /* monochrome — ink is the only "accent"; warm editorial, no colour field */
+  --accent: #17140d;
+  --accent-2: #37301f;
+  --on-image: #f7f4ed;
 
-  /* Brand — iCAM deep blue, solid (no purple glow) */
-  --brand: #090088;
-  --accent: #090088;          /* iCAM deep blue */
-  --accent-bright: #161296;   /* hover, slightly lifted */
-  --accent-deep: #06005c;
-  --accent-on-dark: #8ec2ff;  /* readable blue accent text on dark */
-  --data: #58a6ff;            /* clean sky blue (non-purple) */
-  --data-soft: #8ec2ff;
-  --signal: #34d399;          /* functional "online" green */
-  --warn: #f5a623;
+  --shadow: 0 24px 60px -34px rgba(23, 20, 13, 0.45);
+  --shadow-soft: 0 12px 34px -26px rgba(23, 20, 13, 0.4);
 
-  /* Flat, neutral shadows — no coloured glow blooms */
-  --shadow-soft: 0 10px 30px -18px rgba(0, 0, 0, 0.7);
-  --shadow-accent: 0 8px 20px -14px rgba(0, 0, 0, 0.6);
-  --glow-accent: var(--shadow-soft);
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-inout: cubic-bezier(0.77, 0, 0.175, 1);
 
-  --nav-bg: rgba(7, 11, 26, 0.78);
-  --nav-border: rgba(255, 255, 255, 0.08);
-  --nav-text: #c8cee6;
-  --nav-text-strong: #ffffff;
-  --nav-dropdown: #0d1430;
-  --nav-sheet: #0b1128;
-
-  --hud-line: rgba(255, 255, 255, 0.05);
-
-  --font-hud: var(--font-mono-brand), ui-monospace, "SF Mono", monospace;
-}
-
-/* ---- LIGHT ---- */
-html.light {
-  --background: #eef1f8;
-  --bg-deep: #e4e9f4;
-  --surface: #ffffff;
-  --surface-elevated: #f5f7fc;
-  --surface-glass: rgba(255, 255, 255, 0.72);
-  --foreground: #0b1230;
-  --border: rgba(11, 18, 48, 0.12);
-  --border-strong: rgba(11, 18, 48, 0.22);
-
-  --text-muted: #4a5475;
-  --text-faint: #79829e;
-
-  --brand: #090088;
-  --accent: #090088;          /* iCAM deep blue, strong on white */
-  --accent-bright: #14119c;
-  --accent-deep: #06005c;
-  --accent-on-dark: #090088;
-  --data: #1d6fe0;
-  --data-soft: #1a5fc4;
-  --signal: #15803d;
-  --warn: #b45309;
-
-  --shadow-soft: 0 12px 30px -20px rgba(15, 23, 60, 0.4);
-  --shadow-accent: 0 10px 24px -18px rgba(9, 0, 136, 0.35);
-  --glow-accent: var(--shadow-soft);
-
-  --nav-bg: rgba(255, 255, 255, 0.82);
-  --nav-border: rgba(11, 18, 48, 0.1);
-  --nav-text: #424c6b;
-  --nav-text-strong: #0b1230;
-  --nav-dropdown: #ffffff;
-  --nav-sheet: #ffffff;
-
-  --hud-line: rgba(11, 18, 48, 0.06);
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-accent: var(--accent);
-  --color-data: var(--data);
+  --font-display: var(--font-display-brand), Georgia, "Times New Roman", serif;
   --font-sans: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-mono-brand), ui-monospace, monospace;
 }
 
-html {
-  overflow-anchor: none;
-  scroll-behavior: smooth;
-  background: var(--bg-deep);
+@theme inline {
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-brand), Georgia, serif;
+  --font-mono: var(--font-mono-brand), ui-monospace, monospace;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans-brand), ui-sans-serif, system-ui, sans-serif;
-  -webkit-font-smoothing: antialiased;
+/* base element styles live in @layer base so Tailwind's text-* / bg-*
+   utilities (a later layer) always win — otherwise unlayered `a {color}`
+   would override link colour utilities and hide text. */
+@layer base {
+  html {
+    overflow-anchor: none;
+    background: var(--paper);
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
+/* themed browser surfaces */
 ::selection {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-image);
 }
-
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 12px;
+  height: 12px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-deep);
+  background: var(--paper);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border-strong);
+  background: var(--line-2);
   border-radius: 999px;
-  border: 2px solid var(--bg-deep);
+  border: 3px solid var(--paper);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-3);
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 
-/* ---- Utilities ---- */
-.font-hud {
-  font-family: var(--font-hud);
+/* type helpers */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-feature-settings: "liga", "dlig";
+}
+.font-mono {
+  font-family: var(--font-mono);
   font-feature-settings: "tnum" 1;
 }
-
-/* Solid brand colour (no gradient) — kept name for compatibility. */
-.text-gradient-brand {
-  color: var(--accent);
+.measure {
+  max-width: 66ch;
 }
 
-.hud-grid {
-  background-image:
-    linear-gradient(var(--hud-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--hud-line) 1px, transparent 1px);
-  background-size: 44px 44px;
+/* line-by-line display reveal: each line clipped, then lifts */
+.reveal-line {
+  display: block;
+  overflow: hidden;
+}
+.reveal-line > span {
+  display: block;
+  transform: translateY(105%);
+  transition: transform 1s var(--ease);
 }
 
-.glass-panel {
-  background: var(--surface-glass);
-  backdrop-filter: blur(12px) saturate(130%);
-  -webkit-backdrop-filter: blur(12px) saturate(130%);
-  border: 1px solid var(--border);
-}
-
-.hud-corners {
-  position: relative;
-}
-.hud-corners::before,
-.hud-corners::after {
-  content: "";
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  border-color: var(--accent);
-  opacity: 0.55;
-  pointer-events: none;
-}
-.hud-corners::before {
-  top: 8px;
-  left: 8px;
-  border-top: 1.5px solid;
-  border-left: 1.5px solid;
-}
-.hud-corners::after {
-  bottom: 8px;
-  right: 8px;
-  border-bottom: 1.5px solid;
-  border-right: 1.5px solid;
-}
-
-/* ---- Keyframes ---- */
-@keyframes client-marquee {
+/* continuous ribbons (partners + image gallery) */
+@keyframes marquee-x {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
 }
-.client-marquee-track {
+.marquee {
   display: flex;
   width: max-content;
-  animation: client-marquee 30s linear infinite;
+  will-change: transform;
 }
-
-@keyframes hud-blink {
-  0%, 60% { opacity: 1; }
-  61%, 100% { opacity: 0.25; }
-}
-.hud-blink {
-  animation: hud-blink 1.4s steps(1) infinite;
-}
-
-@keyframes float-y {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-
-/* ---- Map vehicle markers ---- */
-.icam-veh {
-  position: relative;
-  width: 14px;
-  height: 14px;
-}
-.icam-veh__dot {
-  position: absolute;
-  inset: 3px;
-  border-radius: 999px;
-  background: #58a6ff;
-  box-shadow: 0 0 0 2px rgba(4, 5, 12, 0.8);
-}
-.icam-veh__pulse {
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  background: #58a6ff;
-  opacity: 0.5;
-  animation: veh-pulse 1.8s ease-out infinite;
-}
-.icam-veh--warn .icam-veh__dot,
-.icam-veh--warn .icam-veh__pulse { background: #f5a623; }
-.icam-veh--crit .icam-veh__dot,
-.icam-veh--crit .icam-veh__pulse { background: #ef4444; }
-@keyframes veh-pulse {
-  0% { transform: scale(1); opacity: 0.55; }
-  100% { transform: scale(2.6); opacity: 0; }
-}
-
-/* MapLibre attribution — keep subtle on the dark hero */
-.maplibregl-ctrl-attrib {
-  font-size: 10px;
-}
+.marquee--partners { animation: marquee-x 38s linear infinite; }
+.marquee--images { animation: marquee-x 70s linear infinite; }
+.marquee-group:hover .marquee { animation-play-state: paused; }
 
 @media (prefers-reduced-motion: reduce) {
-  .icam-veh__pulse { animation: none; }
-}
-
-@media (prefers-reduced-motion: reduce) {
+  .reveal-line > span { transform: none; transition: none; }
+  .marquee { animation: none; }
   html { scroll-behavior: auto; }
-  .client-marquee-track,
-  .hud-blink { animation: none; }
 }

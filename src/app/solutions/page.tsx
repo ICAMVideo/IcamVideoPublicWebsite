@@ -1,74 +1,86 @@
-import Image from "next/image";
 import Link from "next/link";
-import { SiteFooter } from "@/components/MarketingSections";
-import { SiteNav } from "@/components/SiteNav";
+import type { Metadata } from "next";
+import { StoryNav } from "@/components/story/StoryNav";
+import { StoryFooter } from "@/components/story/StoryFooter";
+import { Reveal } from "@/components/story/primitives";
 import { solutions } from "@/lib/solutions";
+import { solutionDetails, defaultDetail } from "@/lib/solutionDetail";
+
+export const metadata: Metadata = {
+  title: "Solutions by vehicle — iCAM Video Telematics",
+  description:
+    "iCAM video telematics configured by vehicle type — tipper, tautliner, fuel tanker, bus, mining, taxi, ambulance and more.",
+};
+
+const vehicles = solutions.filter((s) => s.slug !== "all");
 
 export default function SolutionsPage() {
   return (
-    <main className="min-h-dvh bg-[color:var(--background)] text-[color:var(--foreground)]">
-      <SiteNav />
+    <main className="bg-[color:var(--paper)] text-[color:var(--ink)]">
+      <StoryNav pinned />
 
-      <section className="relative overflow-hidden border-b border-[color:var(--border)] bg-[color:var(--surface)] px-5 pb-16 pt-32 sm:px-8 sm:pt-40">
-        <div className="pointer-events-none absolute inset-0 hud-grid opacity-40" />
-        <div className="relative mx-auto max-w-6xl">
-          <p className="font-hud text-[11px] font-semibold uppercase tracking-[0.28em] text-[color:var(--data-soft)]">
-            Our Solutions
-          </p>
-          <h1 className="mt-4 max-w-3xl text-balance text-3xl font-semibold tracking-tight text-[color:var(--foreground)] sm:text-5xl">
-            Vehicle-specific telematics configurations
-          </h1>
-          <p className="mt-5 max-w-3xl text-base leading-[1.8] text-[color:var(--text-muted)] sm:text-lg">
-            Solution packs are structured by fleet type so hardware, camera
-            configuration and platform workflows align with real operating
-            conditions — from tippers and tankers to mining, taxis and buses.
-          </p>
-        </div>
-      </section>
-
-      <section className="px-5 py-16 sm:px-8 sm:py-20">
-        <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {solutions.map((item, i) => (
-            <Link
-              key={item.name}
-              href={`/solutions/${item.slug}`}
-              className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--accent)]"
+      {/* header */}
+      <section className="mx-auto max-w-[1400px] px-5 pb-6 pt-32 sm:px-8 sm:pt-40 lg:px-12">
+        <Reveal>
+          <Link
+            href="/"
+            className="group inline-flex items-center gap-2 text-sm font-medium text-[color:var(--ink-3)] transition-colors hover:text-[color:var(--ink)]"
+          >
+            <span aria-hidden className="transition-transform duration-300 group-hover:-translate-x-1">←</span>
+            Home
+          </Link>
+        </Reveal>
+        <div className="mt-10 max-w-4xl">
+          <Reveal>
+            <h1
+              className="font-display text-[color:var(--ink)]"
+              style={{ fontSize: "clamp(2.4rem, 7vw, 5rem)", lineHeight: 1.02, letterSpacing: "-0.025em" }}
             >
-              <article
-                className={`hud-corners group h-full overflow-hidden rounded-2xl border p-6 transition hover:-translate-y-1 ${
-                  item.slug === "all"
-                    ? "border-[color:var(--accent)] bg-[color:var(--surface-elevated)]"
-                    : "border-[color:var(--border)] bg-[color:var(--surface)] hover:border-[color:var(--accent)]"
-                }`}
-              >
-                <p className="font-hud text-xs font-semibold tabular-nums text-[color:var(--text-faint)]">
-                  {String(i + 1).padStart(2, "0")}
-                </p>
-                <h2 className="mt-2 text-xl font-semibold tracking-tight text-[color:var(--foreground)]">
-                  {item.name}
-                </h2>
-                <div className="mt-5 overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-elevated)] p-3">
-                  <div className="relative aspect-[16/9] w-full overflow-hidden rounded-lg">
-                    <Image
-                      src={item.imageSrc}
-                      alt={item.imageAlt}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      className="object-contain p-2 transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="pointer-events-none absolute inset-0 hud-grid opacity-40" />
-                  </div>
-                  <p className="font-hud mt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[color:var(--data-soft)]">
-                    Open interactive view →
-                  </p>
-                </div>
-              </article>
-            </Link>
-          ))}
+              Built around the vehicle.
+            </h1>
+          </Reveal>
+          <Reveal delay={0.08}>
+            <p className="measure mt-7 text-lg leading-relaxed text-[color:var(--ink-2)] sm:text-xl">
+              The platform is the same; the build is not. Cameras, sensors and
+              workflows are configured to how each vehicle actually runs — from
+              the tip face to the long linehaul to the mine.
+            </p>
+          </Reveal>
         </div>
       </section>
 
-      <SiteFooter />
+      {/* vehicle list */}
+      <section className="mx-auto max-w-[1400px] px-5 pb-24 pt-10 sm:px-8 lg:px-12">
+        <div className="grid gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
+          {vehicles.map((s, i) => {
+            const d = solutionDetails[s.slug] ?? defaultDetail;
+            return (
+              <Reveal key={s.slug} delay={(i % 3) * 0.06}>
+                <Link href={`/solutions/${s.slug}`} className="group block">
+                  <figure className="relative aspect-[4/3] w-full overflow-hidden bg-[color:var(--paper-2)]">
+                    <img
+                      src={s.imageSrc}
+                      alt={s.imageAlt}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-contain p-7 transition-transform duration-[800ms] ease-[cubic-bezier(0.23,1,0.32,1)] group-hover:scale-[1.05]"
+                    />
+                  </figure>
+                  <div className="mt-5 flex items-start justify-between gap-4 border-t border-[color:var(--line)] pt-5">
+                    <div>
+                      <h2 className="font-display text-xl text-[color:var(--ink)]">{s.name}</h2>
+                      <p className="mt-1.5 text-sm leading-relaxed text-[color:var(--ink-2)]">{d.blurb}</p>
+                    </div>
+                    <span className="mt-1 shrink-0 text-[color:var(--ink-3)] transition-all duration-300 group-hover:translate-x-1 group-hover:text-[color:var(--accent)]">→</span>
+                  </div>
+                </Link>
+              </Reveal>
+            );
+          })}
+        </div>
+      </section>
+
+      <StoryFooter />
     </main>
   );
 }
