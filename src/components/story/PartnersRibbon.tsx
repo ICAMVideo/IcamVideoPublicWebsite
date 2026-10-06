@@ -9,9 +9,9 @@
  *   e.g. { name: "Engen", logo: "/partners/engen.svg" }
  */
 const PARTNERS: { name: string; logo?: string }[] = [
-  { name: "Engen" },
+  { name: "Engen", logo: "/partners/engen.png" },
   { name: "TotalEnergies", logo: "/partners/totalenergies.svg" },
-  { name: "Lieben Logistics" },
+  { name: "Lieben Group", logo: "/partners/lieben.png" },
 ];
 
 function Chip({ name, logo }: { name: string; logo?: string }) {
